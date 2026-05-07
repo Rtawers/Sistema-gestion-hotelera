@@ -1,0 +1,19 @@
+# ───────── Core ─────────
+Django>=5.0,<5.2
+djangorestframework>=3.15
+djangorestframework-simplejwt>=5.3
+
+# ───────── Filtrado, CORS, env ─────────
+django-cors-headers>=4.3
+django-filter>=24.2
+python-decouple>=3.8
+
+# ───────── Documentación API (Swagger / OpenAPI 3) ─────────
+drf-spectacular>=0.27
+
+# ───────── Base de datos ─────────
+psycopg[binary]>=3.1   # driver moderno de PostgreSQL (reemplaza psycopg2-binary)
+
+# ───────── Utilidades ─────────
+Pillow>=10.0           # imágenes en upload
+gunicorn>=21.2         # WSGI server (se usa en production)

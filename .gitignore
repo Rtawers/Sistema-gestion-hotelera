@@ -1,0 +1,87 @@
+# ═══════════════════════════════════════════════
+# SECRETOS Y VARIABLES DE ENTORNO
+# ═══════════════════════════════════════════════
+.env
+.env.local
+.env.*.local
+*.env
+!.env.example
+!*.env.example
+
+# ═══════════════════════════════════════════════
+# PYTHON
+# ═══════════════════════════════════════════════
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Entornos virtuales
+.venv/
+venv/
+env/
+ENV/
+
+# ═══════════════════════════════════════════════
+# DJANGO
+# ═══════════════════════════════════════════════
+*.log
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+media/
+staticfiles/
+/static/
+
+# ═══════════════════════════════════════════════
+# TESTING / COVERAGE
+# ═══════════════════════════════════════════════
+.coverage
+.coverage.*
+htmlcov/
+.pytest_cache/
+.tox/
+coverage.xml
+*.cover
+
+# ═══════════════════════════════════════════════
+# NODE / FRONTEND
+# ═══════════════════════════════════════════════
+node_modules/
+dist/
+build/
+.vite/
+.cache/
+.next/
+.nuxt/
+*.tsbuildinfo
+
+# ═══════════════════════════════════════════════
+# IDEs / EDITORES
+# ═══════════════════════════════════════════════
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ═══════════════════════════════════════════════
+# DOCKER
+# ═══════════════════════════════════════════════
+*.pid
+docker-compose.override.yml
+
+# ═══════════════════════════════════════════════
+# ARCHIVOS TEMPORALES
+# ═══════════════════════════════════════════════
+*.bak
+*.tmp
+*.temp
+.history/
