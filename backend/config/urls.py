@@ -23,6 +23,9 @@ urlpatterns = [
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
     path("api/docs/", SpectacularSwaggerView.as_view(url_name="schema"), name="swagger"),
     path("api/redoc/", SpectacularRedocView.as_view(url_name="schema"), name="redoc"),
+
+    #urls en el routing principal de django
+    path("api/v1/", include("apps.hoteleria.urls")),
 ]
 
 # ─────────────────────────────────────────────────────────────
