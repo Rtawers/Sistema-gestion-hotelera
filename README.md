@@ -81,5 +81,5 @@ Resultado: 74 passed, 92% cobertura
 
 ## Autor
 
-Maicol Reyes Tarazona (Rtawers)
+Daniel Rodriguez Torres (Rtawers)
 Universidad Señor de Sipán — Ciclo IX — 2026-II
