@@ -4,17 +4,18 @@
  * Flujo:
  * 1. Usuario ingresa username + password.
  * 2. Llama a la API de login.
- * 3. Si OK: guarda tokens, actualiza el store, navega al dashboard.
+ * 3. Si OK: guarda tokens, actualiza el store, navega segun el rol.
  * 4. Si error: muestra mensaje.
  */
 import { useState, type FormEvent } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import { Hotel, Lock, User as UserIcon, LogIn } from "lucide-react";
 import { Button } from "../components/ui/Button";
 import { Input } from "../components/ui/Input";
 import { login } from "../api/auth.api";
 import { useAuthStore } from "../store/auth.store";
+import { getRutaInicial } from "../utils/roles";
 import axios from "axios";
 
 export function LoginPage() {
@@ -23,11 +24,7 @@ export function LoginPage() {
   const [loading, setLoading] = useState(false);
 
   const navigate = useNavigate();
-  const location = useLocation();
   const setUser = useAuthStore((s) => s.setUser);
-
-  // Redirect al destino original o al dashboard
-  const from = (location.state as { from?: { pathname: string } })?.from?.pathname || "/";
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -42,7 +39,10 @@ export function LoginPage() {
       const response = await login(username, password);
       setUser(response.user);
       toast.success(`Bienvenido ${response.user.username}!`);
-      navigate(from, { replace: true });
+
+      // Redirigir segun el rol del usuario
+      const rutaInicial = getRutaInicial(response.user.rol);
+      navigate(rutaInicial, { replace: true });
     } catch (error: unknown) {
       if (axios.isAxiosError(error)) {
         if (error.response?.status === 401) {
