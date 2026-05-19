@@ -13,6 +13,7 @@ import {
   Layers,
   Users,
   ScrollText,
+  AlertTriangle,   
 } from "lucide-react";
 import clsx from "clsx";
 import { useAuthStore } from "../../store/auth.store";
@@ -63,6 +64,15 @@ const allLinks: LinkConfig[] = [
     icon: Sparkles,
     roles: ["ADMIN", "HOUSEKEEPING"],
   },
+
+  // Incidentes: ADMIN + RECEPCIONISTA (HU11)
+  {
+    to: "/incidentes",
+    label: "Incidentes",
+    icon: AlertTriangle,
+    roles: ["ADMIN", "RECEPCIONISTA"],
+  },
+
   // Reportes: solo ADMIN
   {
     to: "/reportes",

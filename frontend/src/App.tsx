@@ -18,6 +18,8 @@ import { TiposHabitacionPage } from "./pages/TiposHabitacionPage";
 import { AccesoDenegadoPage } from "./pages/AccesoDenegadoPage";
 import { PortalReservaPage } from "./pages/PortalReservaPage";
 import { ReservaConfirmadaPage } from "./pages/ReservaConfirmadaPage";
+import { IncidentesPage } from "./pages/IncidentesPage";
+
 
 // Protectores
 import { ProtectedRoute } from "./components/layout/ProtectedRoute";
@@ -77,6 +79,15 @@ function App() {
           element={
             <RequireRole roles={["ADMIN"]}>
               <TiposHabitacionPage />
+            </RequireRole>
+          }
+        />
+
+        <Route
+          path="/incidentes"
+          element={
+            <RequireRole roles={["ADMIN", "RECEPCIONISTA"]}>
+              <IncidentesPage />
             </RequireRole>
           }
         />

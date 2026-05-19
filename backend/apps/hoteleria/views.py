@@ -180,6 +180,68 @@ class HabitacionViewSet(viewsets.ModelViewSet):
         return Response(HabitacionSerializer(habitacion).data)
 
 
+    @action(detail=False, methods=["get"], url_path="housekeeping")
+    def housekeeping(self, request):
+        """
+        GET /api/v1/habitaciones/housekeeping/?hotel_id=1
+        Lista habitaciones que requieren atencion, ORDENADAS por urgencia:
+        1. Las que tienen check-in HOY (urgentes - check-out temprano del huesped anterior)
+        2. Las que tienen check-in MAÑANA
+        3. Resto
+        """
+        from datetime import date, timedelta
+        from .models import Reserva
+
+        hotel_id = request.query_params.get("hotel_id")
+
+        qs = self.get_queryset().filter(
+            estado__in=["LIMPIEZA", "MANTENIMIENTO"]
+        ).select_related("tipo", "hotel")
+
+        if hotel_id:
+            qs = qs.filter(hotel_id=hotel_id)
+
+        hoy = date.today()
+        manana = hoy + timedelta(days=1)
+
+        # IDs de habitaciones con check-in HOY (mas urgentes)
+        check_in_hoy_ids = set(
+            Reserva.objects.filter(
+                fecha_entrada=hoy,
+                estado__in=["PENDIENTE", "CONFIRMADA"],
+            ).values_list("habitacion_id", flat=True)
+        )
+
+        # IDs de habitaciones con check-in MAÑANA
+        check_in_manana_ids = set(
+            Reserva.objects.filter(
+                fecha_entrada=manana,
+                estado__in=["PENDIENTE", "CONFIRMADA"],
+            ).values_list("habitacion_id", flat=True)
+        )
+
+        # Serializar y agregar info de urgencia
+        habitaciones_serializadas = []
+        for hab in qs:
+            data = HabitacionSerializer(hab).data
+            if hab.id in check_in_hoy_ids:
+                data["urgencia"] = "ALTA"
+                data["motivo_urgencia"] = "Check-in HOY"
+            elif hab.id in check_in_manana_ids:
+                data["urgencia"] = "MEDIA"
+                data["motivo_urgencia"] = "Check-in mañana"
+            else:
+                data["urgencia"] = "BAJA"
+                data["motivo_urgencia"] = ""
+            habitaciones_serializadas.append(data)
+
+        # Ordenar por urgencia (ALTA -> MEDIA -> BAJA)
+        orden = {"ALTA": 0, "MEDIA": 1, "BAJA": 2}
+        habitaciones_serializadas.sort(key=lambda h: orden[h["urgencia"]])
+
+        return Response(habitaciones_serializadas)
+
+
 # ═══════════════════════════════════════════════════════════════
 # HUESPED
 # ═══════════════════════════════════════════════════════════════
