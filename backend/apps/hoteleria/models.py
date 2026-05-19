@@ -680,3 +680,110 @@ class Folio(TimeStampedModel):
 
     def __str__(self):
         return f"Folio #{self.pk} - Total S/ {self.total} ({self.get_estado_display()})"
+    
+# ============================================================
+# 10. INCIDENTE (HU11 - Reportar desperfectos / consumos)
+# ============================================================
+class Incidente(TimeStampedModel):
+    """
+    Reporte de housekeeping de problemas encontrados en habitaciones:
+    desperfectos, consumos del minibar, items faltantes, etc.
+    Recepcion los ve para cobrar o mantenimiento los repara.
+    """
+    class Tipo(models.TextChoices):
+        DESPERFECTO = "DESPERFECTO", "Desperfecto"
+        CONSUMO_MINIBAR = "CONSUMO_MINIBAR", "Consumo de minibar"
+        ITEM_FALTANTE = "ITEM_FALTANTE", "Item faltante"
+        OTRO = "OTRO", "Otro"
+
+    class Estado(models.TextChoices):
+        REPORTADO = "REPORTADO", "Reportado"
+        EN_PROCESO = "EN_PROCESO", "En proceso"
+        RESUELTO = "RESUELTO", "Resuelto"
+
+    habitacion = models.ForeignKey(
+        Habitacion,
+        on_delete=models.CASCADE,
+        related_name="incidentes",
+    )
+    tipo = models.CharField(
+        max_length=20,
+        choices=Tipo.choices,
+        default=Tipo.OTRO,
+    )
+    descripcion = models.TextField(
+        help_text="Detalle del incidente: que se encontro y donde",
+    )
+    estado = models.CharField(
+        max_length=15,
+        choices=Estado.choices,
+        default=Estado.REPORTADO,
+    )
+    reportado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name="incidentes_reportados",
+    )
+
+    class Meta:
+        db_table = "incidente"
+        verbose_name = "Incidente"
+        verbose_name_plural = "Incidentes"
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["estado", "-created_at"], name="idx_incidente_estado"),
+        ]
+
+    def __str__(self):
+        return f"Incidente Hab.{self.habitacion.numero} - {self.get_tipo_display()}"
+
+
+# ============================================================
+# 11. LOG DE AUDITORIA (HU15 - Bitacora)
+# ============================================================
+class LogAuditoria(TimeStampedModel):
+    """
+    Registro inmutable de acciones criticas para auditoria del gerente:
+    cancelaciones, descuentos, cambios de tarifa, login/logout, etc.
+    """
+    class Accion(models.TextChoices):
+        LOGIN = "LOGIN", "Inicio de sesion"
+        LOGOUT = "LOGOUT", "Cierre de sesion"
+        RESERVA_CREADA = "RESERVA_CREADA", "Reserva creada"
+        RESERVA_CANCELADA = "RESERVA_CANCELADA", "Reserva cancelada"
+        CHECKIN = "CHECKIN", "Check-in realizado"
+        CHECKOUT = "CHECKOUT", "Check-out realizado"
+        CARGO_AGREGADO = "CARGO_AGREGADO", "Cargo agregado"
+        PAGO_REGISTRADO = "PAGO_REGISTRADO", "Pago registrado"
+        DESCUENTO_APLICADO = "DESCUENTO_APLICADO", "Descuento aplicado"
+        USUARIO_CREADO = "USUARIO_CREADO", "Usuario creado"
+        INCIDENTE_REPORTADO = "INCIDENTE_REPORTADO", "Incidente reportado"
+
+    usuario = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="acciones_auditadas",
+    )
+    accion = models.CharField(max_length=30, choices=Accion.choices)
+    detalles = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="Contexto: ids, antes/despues, monto, etc.",
+    )
+    ip = models.GenericIPAddressField(null=True, blank=True)
+
+    class Meta:
+        db_table = "log_auditoria"
+        verbose_name = "Log de auditoria"
+        verbose_name_plural = "Logs de auditoria"
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["accion", "-created_at"], name="idx_log_accion"),
+            models.Index(fields=["usuario", "-created_at"], name="idx_log_usuario"),
+        ]
+
+    def __str__(self):
+        return f"{self.get_accion_display()} por {self.usuario or 'anonimo'}"

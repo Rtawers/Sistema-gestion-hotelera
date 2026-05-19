@@ -404,3 +404,110 @@ def actualizar_estado_habitacion(
     habitacion.save(update_fields=["estado", "updated_at"])
 
     return habitacion
+
+# ============================================================
+# AUDITORIA (HU15)
+# ============================================================
+def registrar_log(*, usuario, accion: str, detalles: dict = None, ip: str = None):
+    """
+    Registra una accion en la bitacora de auditoria.
+    Importable desde views.py y signals.
+    """
+    from .models import LogAuditoria
+
+    return LogAuditoria.objects.create(
+        usuario=usuario,
+        accion=accion,
+        detalles=detalles or {},
+        ip=ip,
+    )
+
+
+# ============================================================
+# RESERVA PUBLICA (HU01 - cliente externo reserva)
+# ============================================================
+@transaction.atomic
+def crear_reserva_publica(
+    *,
+    habitacion: Habitacion,
+    check_in,
+    check_out,
+    tipo_doc: str,
+    num_doc: str,
+    nombres: str,
+    apellidos: str,
+    email: str,
+    telefono: str,
+    adultos: int = 1,
+    ninos: int = 0,
+) -> "Reserva":
+    """
+    Crea una reserva desde el portal publico (sin login).
+    Estado inicial: PENDIENTE (recepcion debe confirmarla).
+    """
+    from .models import Reserva
+    from apps.hoteleria.models import Huesped
+
+    # 1. Buscar o crear el huesped por num_doc
+    huesped, creado = Huesped.objects.get_or_create(
+        num_doc=num_doc,
+        defaults={
+            "tipo_doc": tipo_doc,
+            "nombres": nombres,
+            "apellidos": apellidos,
+            "email": email,
+            "telefono": telefono,
+            "nacionalidad": "Peruana",
+        },
+    )
+
+    # Si ya existia, actualizar contacto por si cambio
+    if not creado:
+        if email and not huesped.email:
+            huesped.email = email
+        if telefono and not huesped.telefono:
+            huesped.telefono = telefono
+        huesped.save()
+
+    # 2. Validar disponibilidad (overlap check)
+    overlap = Reserva.objects.filter(
+        habitacion=habitacion,
+        estado__in=["PENDIENTE", "CONFIRMADA"],
+        fecha_entrada__lt=check_out,
+        fecha_salida__gt=check_in,
+    ).exists()
+
+    if overlap:
+        raise ValueError(
+            f"La habitacion {habitacion.numero} no esta disponible en esas fechas."
+        )
+
+    # 3. Crear reserva en estado PENDIENTE
+    reserva = Reserva.objects.create(
+    hotel=habitacion.hotel,
+    huesped=huesped,
+    habitacion=habitacion,
+
+    fecha_entrada=check_in,
+    fecha_salida=check_out,
+
+    num_adultos=adultos,
+    num_ninos=ninos,
+
+    estado="PENDIENTE",
+    origen="WEB",
+)
+
+    # 4. Log de auditoria
+    registrar_log(
+        usuario=None,
+        accion="RESERVA_CREADA",
+        detalles={
+            "reserva_id": reserva.id,
+            "habitacion": habitacion.numero,
+            "huesped_doc": num_doc,
+            "origen": "WEB_PUBLICO_PORTAL",
+        },
+    )
+
+    return reserva

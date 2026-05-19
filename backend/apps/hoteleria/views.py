@@ -20,11 +20,12 @@ from datetime import datetime
 
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.shortcuts import get_object_or_404
-from rest_framework import status, viewsets
-from rest_framework.decorators import action
-from rest_framework.permissions import IsAuthenticated
+from rest_framework import status, viewsets, permissions
+from rest_framework.decorators import action, api_view, permission_classes
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from drf_spectacular.utils import extend_schema
 
 from apps.core.permissions import (
     IsAdmin,
@@ -34,7 +35,6 @@ from apps.core.permissions import (
 )
 
 from . import selectors, services
-from .services import pagar_cargos_pendientes
 from .models import (
     CargoEstancia,
     Estancia,
@@ -42,6 +42,8 @@ from .models import (
     Habitacion,
     Hotel,
     Huesped,
+    Incidente,
+    LogAuditoria,
     Reserva,
     Tarifa,
     TipoHabitacion,
@@ -56,13 +58,18 @@ from .serializers import (
     HotelSerializer,
     HousekeepingSerializer,
     HuespedSerializer,
+    IncidenteSerializer,
+    LogAuditoriaSerializer,
     OcupacionSerializer,
     ReservaCancelarSerializer,
     ReservaCreateSerializer,
+    ReservaPublicaSerializer,
     ReservaSerializer,
     TarifaSerializer,
     TipoHabitacionSerializer,
 )
+from .services import crear_reserva_publica, pagar_cargos_pendientes, registrar_log
+
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -471,3 +478,182 @@ class ReporteOcupacionView(APIView):
 
         result = selectors.tasa_ocupacion(int(hotel_id), fecha)
         return Response(OcupacionSerializer(result).data)
+    
+
+# ═══════════════════════════════════════════════════════════════
+# INCIDENTES (HU11)
+# ═══════════════════════════════════════════════════════════════
+class IncidenteViewSet(viewsets.ModelViewSet):
+    """
+    GET    /api/v1/incidentes/        -> listar
+    POST   /api/v1/incidentes/        -> crear (housekeeping reporta)
+    PATCH  /api/v1/incidentes/{id}/   -> cambiar estado
+    """
+    queryset = Incidente.objects.select_related("habitacion", "reportado_por").all()
+    serializer_class = IncidenteSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def perform_create(self, serializer):
+        instancia = serializer.save(reportado_por=self.request.user)
+        # Log de auditoria
+        registrar_log(
+            usuario=self.request.user,
+            accion="INCIDENTE_REPORTADO",
+            detalles={
+                "incidente_id": instancia.id,
+                "habitacion": instancia.habitacion.numero,
+                "tipo": instancia.tipo,
+            },
+        )
+
+
+# ═══════════════════════════════════════════════════════════════
+# LOGS DE AUDITORIA (HU15) - solo lectura, solo ADMIN
+# ═══════════════════════════════════════════════════════════════
+class LogAuditoriaViewSet(viewsets.ReadOnlyModelViewSet):
+    """
+    GET /api/v1/auditoria/  -> listar logs (solo gerente/admin)
+    """
+    queryset = LogAuditoria.objects.select_related("usuario").all()
+    serializer_class = LogAuditoriaSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        # Solo ADMIN puede ver auditoria
+        if self.request.user.rol != "ADMIN":
+            return qs.none()
+        # Filtros opcionales
+        accion = self.request.query_params.get("accion")
+        if accion:
+            qs = qs.filter(accion=accion)
+        return qs[:200]  # limite de 200 logs por consulta
+
+
+# ═══════════════════════════════════════════════════════════════
+# ENDPOINTS PUBLICOS (HU01 - cliente externo, sin auth)
+# ═══════════════════════════════════════════════════════════════
+@api_view(["GET"])
+@permission_classes([AllowAny])
+def habitaciones_disponibles_publico(request):
+    """
+    GET /api/v1/publico/habitaciones-disponibles/?check_in=2026-05-20&check_out=2026-05-22
+    Lista habitaciones libres en el rango dado.
+    """
+    from datetime import datetime
+    from .models import Habitacion, Reserva
+
+    check_in_str = request.query_params.get("check_in")
+    check_out_str = request.query_params.get("check_out")
+
+    if not check_in_str or not check_out_str:
+        return Response(
+            {"detail": "Debe enviar check_in y check_out (YYYY-MM-DD)"},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    try:
+        check_in = datetime.strptime(check_in_str, "%Y-%m-%d").date()
+        check_out = datetime.strptime(check_out_str, "%Y-%m-%d").date()
+    except ValueError:
+        return Response(
+            {"detail": "Formato de fecha invalido (YYYY-MM-DD)"},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    if check_out <= check_in:
+        return Response(
+            {"detail": "Check-out debe ser posterior al check-in"},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    # Habitaciones que NO tienen reservas que solapen
+    ocupadas_ids = Reserva.objects.filter(
+        estado__in=["PENDIENTE", "CONFIRMADA"],
+        fecha_entrada__lt=check_out,
+        fecha_salida__gt=check_in,
+    ).values_list("habitacion_id", flat=True)
+
+    disponibles = (
+        Habitacion.objects.exclude(id__in=ocupadas_ids)
+        .filter(estado="DISPONIBLE")
+        .select_related("tipo", "hotel")
+    )
+
+    data = [
+        {
+            "id": h.id,
+            "numero": h.numero,
+            "piso": h.piso,
+            "tipo": {
+                "id": h.tipo.id,
+                "nombre": h.tipo.nombre,
+                "capacidad": h.tipo.capacidad,
+                "precio_base": str(h.tipo.precio_base),
+            },
+            "hotel_nombre": h.hotel.nombre,
+        }
+        for h in disponibles
+    ]
+
+    return Response({"disponibles": data, "total": len(data)})
+
+
+
+
+@extend_schema(
+    request=ReservaPublicaSerializer,
+    responses={201: dict},
+)
+
+@api_view(["POST"])
+@permission_classes([AllowAny])
+def crear_reserva_publica_view(request):
+    """
+    POST /api/v1/publico/reservar/
+    Cuerpo: { habitacion_id, check_in, check_out, tipo_doc, num_doc,
+              nombres, apellidos, email, telefono, adultos, ninos }
+    """
+    from .models import Habitacion
+
+    serializer = ReservaPublicaSerializer(data=request.data)
+    serializer.is_valid(raise_exception=True)
+    data = serializer.validated_data
+
+    try:
+        habitacion = Habitacion.objects.get(id=data["habitacion_id"])
+    except Habitacion.DoesNotExist:
+        return Response(
+            {"detail": "Habitacion no encontrada"},
+            status=status.HTTP_404_NOT_FOUND,
+        )
+
+    try:
+        reserva = crear_reserva_publica(
+            habitacion=habitacion,
+            check_in=data["check_in"],
+            check_out=data["check_out"],
+            tipo_doc=data["tipo_doc"],
+            num_doc=data["num_doc"],
+            nombres=data["nombres"],
+            apellidos=data["apellidos"],
+            email=data["email"],
+            telefono=data["telefono"],
+            adultos=data["adultos"],
+            ninos=data["ninos"],
+        )
+    except ValueError as e:
+        return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+    return Response(
+        {
+            "detail": "Reserva creada exitosamente",
+            "codigo": f"R-{reserva.id:06d}",
+            "estado": "PENDIENTE",
+            "mensaje": (
+                "Tu reserva esta en revision. Te contactaremos para confirmar."
+            ),
+            "reserva_id": reserva.id,
+        },
+        status=status.HTTP_201_CREATED,
+    )

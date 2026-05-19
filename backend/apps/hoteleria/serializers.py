@@ -23,6 +23,8 @@ from .models import (
     Reserva,
     Tarifa,
     TipoHabitacion,
+    Incidente,
+    LogAuditoria,
 )
 
 
@@ -433,3 +435,85 @@ class OcupacionSerializer(serializers.Serializer):
     total = serializers.IntegerField()
     ocupadas = serializers.IntegerField()
     tasa_pct = serializers.FloatField()
+
+# ═══════════════════════════════════════════════════════════════
+# INCIDENTE (HU11)
+# ═══════════════════════════════════════════════════════════════
+class IncidenteSerializer(serializers.ModelSerializer):
+    """Serializer de lectura/escritura de incidentes."""
+    tipo_display = serializers.CharField(source="get_tipo_display", read_only=True)
+    estado_display = serializers.CharField(source="get_estado_display", read_only=True)
+    habitacion_numero = serializers.CharField(source="habitacion.numero", read_only=True)
+    reportado_por_username = serializers.CharField(
+        source="reportado_por.username",
+        read_only=True,
+        default="",
+    )
+
+    class Meta:
+        model = Incidente
+        fields = [
+            "id",
+            "habitacion",
+            "habitacion_numero",
+            "tipo",
+            "tipo_display",
+            "descripcion",
+            "estado",
+            "estado_display",
+            "reportado_por",
+            "reportado_por_username",
+            "created_at",
+        ]
+        read_only_fields = ["id", "reportado_por", "created_at"]
+
+
+# ═══════════════════════════════════════════════════════════════
+# LOG DE AUDITORIA (HU15)
+# ═══════════════════════════════════════════════════════════════
+class LogAuditoriaSerializer(serializers.ModelSerializer):
+    """Serializer de solo-lectura para logs."""
+    accion_display = serializers.CharField(source="get_accion_display", read_only=True)
+    usuario_username = serializers.CharField(
+        source="usuario.username",
+        read_only=True,
+        default="Anonimo",
+    )
+
+    class Meta:
+        model = LogAuditoria
+        fields = [
+            "id",
+            "usuario",
+            "usuario_username",
+            "accion",
+            "accion_display",
+            "detalles",
+            "ip",
+            "created_at",
+        ]
+
+
+# ═══════════════════════════════════════════════════════════════
+# RESERVA PUBLICA (HU01 - portal de cliente)
+# ═══════════════════════════════════════════════════════════════
+class ReservaPublicaSerializer(serializers.Serializer):
+    """Serializer del formulario publico de reserva (sin auth)."""
+    habitacion_id = serializers.IntegerField()
+    check_in = serializers.DateField()
+    check_out = serializers.DateField()
+    tipo_doc = serializers.ChoiceField(choices=["DNI", "CE", "PAS"])
+    num_doc = serializers.CharField(max_length=20)
+    nombres = serializers.CharField(max_length=100)
+    apellidos = serializers.CharField(max_length=100)
+    email = serializers.EmailField()
+    telefono = serializers.CharField(max_length=20)
+    adultos = serializers.IntegerField(min_value=1, default=1)
+    ninos = serializers.IntegerField(min_value=0, default=0)
+
+    def validate(self, data):
+        if data["check_out"] <= data["check_in"]:
+            raise serializers.ValidationError({
+                "check_out": "Check-out debe ser posterior al check-in.",
+            })
+        return data

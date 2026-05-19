@@ -12,10 +12,14 @@ from .views import (
     HabitacionViewSet,
     HotelViewSet,
     HuespedViewSet,
+    IncidenteViewSet,
+    LogAuditoriaViewSet,
     ReporteOcupacionView,
     ReservaViewSet,
     TarifaViewSet,
     TipoHabitacionViewSet,
+    crear_reserva_publica_view,
+    habitaciones_disponibles_publico,
 )
 
 app_name = "hoteleria"
@@ -29,11 +33,25 @@ router.register(r"huespedes", HuespedViewSet, basename="huesped")
 router.register(r"tarifas", TarifaViewSet, basename="tarifa")
 router.register(r"reservas", ReservaViewSet, basename="reserva")
 router.register(r"estancias", EstanciaViewSet, basename="estancia")
+router.register(r"incidentes", IncidenteViewSet, basename="incidente")
+router.register(r"auditoria", LogAuditoriaViewSet, basename="auditoria")
 
 urlpatterns = [
-    # Endpoints generados por el router
+    # ── Endpoints publicos (sin auth) ──
+    path(
+        "publico/habitaciones-disponibles/",
+        habitaciones_disponibles_publico,
+        name="publico-habitaciones-disponibles",
+    ),
+    path(
+        "publico/reservar/",
+        crear_reserva_publica_view,
+        name="publico-reservar",
+    ),
+
+    # ── Endpoints generados por el router ──
     path("", include(router.urls)),
 
-    # Endpoints custom (no son CRUD)
+    # ── Endpoints custom (no son CRUD) ──
     path("reportes/ocupacion/", ReporteOcupacionView.as_view(), name="reporte-ocupacion"),
 ]
