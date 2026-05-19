@@ -43,7 +43,12 @@ export function Navbar() {
 
           {/* User info */}
           <div className="flex items-center gap-4">
-            <div className="hidden sm:flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => navigate("/perfil")}
+              className="hidden sm:flex items-center gap-3 hover:bg-gray-50 px-2 py-1 rounded-lg transition-colors"
+              title="Ver mi perfil"
+            >
               <div className="flex items-center justify-center w-9 h-9 bg-gray-100 rounded-full">
                 <UserIcon className="w-5 h-5 text-gray-600" />
               </div>
@@ -59,7 +64,7 @@ export function Navbar() {
                   {user.rol_display}
                 </span>
               </div>
-            </div>
+            </button>
 
             <Button
               variant="ghost"

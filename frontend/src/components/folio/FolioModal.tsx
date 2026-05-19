@@ -60,26 +60,45 @@ export function FolioModal({ isOpen, onClose, estancia }: FolioModalProps) {
   const pagar = usePagarCargosPendientes(estancia.id);
   const checkout = useHacerCheckout();
 
-  const handlePagar = () => {
-    if (!folio?.tiene_deuda) return;
+ const handlePagar = () => {
+  if (!folio?.tiene_deuda) return;
 
-    if (!window.confirm("Marcar todos los cargos pendientes como pagados?")) {
-      return;
-    }
+  const metodos = [
+    "EFECTIVO",
+    "TARJETA",
+    "TRANSFERENCIA",
+    "YAPE",
+    "PLIN",
+  ];
 
-    pagar.mutate(undefined, {
-      onSuccess: (res) => {
-        toast.success(`${res.cargos_pagados} cargos marcados como pagados`);
-      },
-      onError: (e: unknown) => {
-        if (axios.isAxiosError(e)) {
-          toast.error(e.response?.data?.detail || "Error al pagar");
-        } else {
-          toast.error("Error de conexion");
-        }
-      },
-    });
-  };
+  const input = window.prompt(
+    `Seleccione metodo de pago:\n\n1) EFECTIVO\n2) TARJETA\n3) TRANSFERENCIA\n4) YAPE\n5) PLIN\n\nEscriba el numero (1-5):`,
+    "1",
+  );
+
+  if (!input) return;
+
+  const idx = parseInt(input.trim()) - 1;
+  if (idx < 0 || idx >= metodos.length) {
+    toast.error("Opcion invalida");
+    return;
+  }
+
+  const metodoPago = metodos[idx];
+
+  pagar.mutate(metodoPago, {
+    onSuccess: (res) => {
+      toast.success(`${res.cargos_pagados} cargos pagados con ${metodoPago}`);
+    },
+    onError: (e: unknown) => {
+      if (axios.isAxiosError(e)) {
+        toast.error(e.response?.data?.detail || "Error al pagar");
+      } else {
+        toast.error("Error de conexion");
+      }
+    },
+  });
+};
 
   const handleCheckout = () => {
     if (folio?.tiene_deuda) {

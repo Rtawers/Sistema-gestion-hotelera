@@ -19,6 +19,8 @@ import { useHuespedes } from "../../hooks/useHuespedes";
 import { useCrearReserva } from "../../hooks/useReservas";
 import { habitacionesDisponibles } from "../../api/habitaciones.api";
 import { useQuery } from "@tanstack/react-query";
+import { NuevoHuespedModal } from "./NuevoHuespedModal";
+
 import {
   formatearMoneda,
   calcularNoches,
@@ -41,6 +43,8 @@ export function NuevaReservaModal({
   // ─── Form state ─────────────────────────────────
   const [search, setSearch] = useState("");
   const [huespedSel, setHuespedSel] = useState<Huesped | null>(null);
+  const [nuevoHuespedOpen, setNuevoHuespedOpen] = useState(false);
+
   const [fechaEntrada, setFechaEntrada] = useState(sumarDias(fechaHoyISO(), 1));
   const [fechaSalida, setFechaSalida] = useState(sumarDias(fechaHoyISO(), 3));
   const [habitacionId, setHabitacionId] = useState<number | null>(null);
@@ -172,9 +176,20 @@ export function NuevaReservaModal({
               {search.length > 0 && huespedes && (
                 <div className="mt-2 max-h-40 overflow-y-auto border border-gray-200 rounded-lg">
                   {huespedes.length === 0 ? (
-                    <p className="p-3 text-sm text-gray-500 text-center">
-                      No se encontraron huespedes con "{search}".
-                    </p>
+                    <div className="p-3 text-center">
+                      <p className="text-sm text-gray-500 mb-2">
+                        No se encontraron huespedes con "{search}".
+                      </p>
+
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => setNuevoHuespedOpen(true)}
+                      >
+                        + Registrar nuevo huésped
+                      </Button>
+                    </div>
                   ) : (
                     huespedes.slice(0, 5).map((h: Huesped) => (
                       <button
@@ -261,12 +276,14 @@ export function NuevaReservaModal({
             <BedDouble className="w-4 h-4" />
             Habitacion ({habitaciones?.length ?? 0} disponibles)
           </label>
+
           <select
             value={habitacionId ?? ""}
             onChange={(e) => setHabitacionId(parseInt(e.target.value) || null)}
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 focus:outline-none"
           >
             <option value="">-- Seleccione una habitacion --</option>
+
             {habitaciones?.map((h: Habitacion) => (
               <option key={h.id} value={h.id}>
                 Hab. {h.numero} - {h.tipo.nombre} (cap. {h.tipo.capacidad}) - S/{" "}
@@ -282,9 +299,11 @@ export function NuevaReservaModal({
             <Users className="w-4 h-4" />
             Personas
           </label>
+
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-xs text-gray-600">Adultos</label>
+
               <input
                 type="number"
                 min={1}
@@ -294,8 +313,10 @@ export function NuevaReservaModal({
                 className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 focus:outline-none"
               />
             </div>
+
             <div>
               <label className="text-xs text-gray-600">Ninos</label>
+
               <input
                 type="number"
                 min={0}
@@ -306,6 +327,7 @@ export function NuevaReservaModal({
               />
             </div>
           </div>
+
           {habitacionSel && !capacidadOk && (
             <p className="mt-1 text-xs text-red-600">
               La habitacion soporta maximo {habitacionSel.tipo.capacidad} personas.
@@ -320,20 +342,25 @@ export function NuevaReservaModal({
               <DollarSign className="w-5 h-5 text-primary-700" />
               <h3 className="font-semibold text-gray-900">Precio estimado</h3>
             </div>
+
             <div className="space-y-1 text-sm">
               <div className="flex justify-between text-gray-600">
                 <span>
                   S/ {habitacionSel.tipo.precio_base} x {noches} noches
                 </span>
+
                 <span>{formatearMoneda(precioEstimado)}</span>
               </div>
+
               <div className="border-t border-primary-200 pt-1 mt-2 flex justify-between font-bold text-gray-900">
                 <span>TOTAL</span>
+
                 <span className="text-lg text-primary-700">
                   {formatearMoneda(precioEstimado)}
                 </span>
               </div>
             </div>
+
             <p className="mt-2 text-xs text-gray-500">
               * El precio final se calcula en el backend dia por dia (puede variar con tarifas por temporada).
             </p>
@@ -349,6 +376,7 @@ export function NuevaReservaModal({
           >
             Cancelar
           </Button>
+
           <Button
             type="submit"
             variant="primary"
@@ -359,6 +387,15 @@ export function NuevaReservaModal({
           </Button>
         </div>
       </form>
+
+      <NuevoHuespedModal
+        isOpen={nuevoHuespedOpen}
+        onClose={() => setNuevoHuespedOpen(false)}
+        onCreado={(h) => {
+          setHuespedSel(h);
+          setSearch("");
+        }}
+      />
     </Modal>
   );
 }

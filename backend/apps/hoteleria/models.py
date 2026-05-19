@@ -539,6 +539,13 @@ class CargoEstancia(TimeStampedModel):
         SPA = "SPA", "Spa"
         OTRO = "OTRO", "Otro"
 
+    class MetodoPago(models.TextChoices):
+        EFECTIVO = "EFECTIVO", "Efectivo"
+        TARJETA = "TARJETA", "Tarjeta"
+        TRANSFERENCIA = "TRANSFERENCIA", "Transferencia"
+        YAPE = "YAPE", "Yape"
+        PLIN = "PLIN", "Plin"
+
     estancia = models.ForeignKey(
         Estancia,
         on_delete=models.CASCADE,
@@ -557,6 +564,18 @@ class CargoEstancia(TimeStampedModel):
     )
     fecha = models.DateTimeField(default=timezone.now)
     pagado = models.BooleanField(default=False)
+    metodo_pago = models.CharField(
+        max_length=20,
+        choices=MetodoPago.choices,
+        null=True,
+        blank=True,
+        verbose_name="Método de pago",
+    )
+    fecha_pago = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name="Fecha de pago",
+    )
     registrado_por = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,

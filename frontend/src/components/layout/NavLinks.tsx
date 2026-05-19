@@ -1,20 +1,45 @@
 /**
- * Enlaces de navegacion principales.
+ * Enlaces de navegacion principales, filtrados segun el rol del usuario.
  */
 import { NavLink } from "react-router-dom";
-import { Building2, Calendar, BedDouble } from "lucide-react";
+import {
+  Building2,
+  Calendar,
+  BedDouble,
+  Sparkles,
+  BarChart3,
+  Layers,
+} from "lucide-react";
 import clsx from "clsx";
+import { useAuthStore } from "../../store/auth.store";
+import type { Rol } from "../../types/api.types";
 
-const links = [
-  { to: "/", label: "Plano", icon: Building2 },
-  { to: "/reservas", label: "Reservas", icon: Calendar },
-  { to: "/estancias", label: "Estancias", icon: BedDouble },
+interface LinkConfig {
+  to: string;
+  label: string;
+  icon: typeof Building2;
+  roles: Rol[];
+}
+
+// Cada link declara qué roles pueden verlo
+const allLinks: LinkConfig[] = [
+  { to: "/", label: "Plano", icon: Building2, roles: ["ADMIN", "RECEPCIONISTA"] },
+  { to: "/reservas", label: "Reservas", icon: Calendar, roles: ["ADMIN", "RECEPCIONISTA"] },
+  { to: "/estancias", label: "Estancias", icon: BedDouble, roles: ["ADMIN", "RECEPCIONISTA"] },
+  { to: "/housekeeping", label: "Housekeeping", icon: Sparkles, roles: ["ADMIN", "HOUSEKEEPING"] },
+  { to: "/reportes", label: "Reportes", icon: BarChart3, roles: ["ADMIN"] },
+  { to: "/tipos-habitacion", label: "Tipos Hab.", icon: Layers, roles: ["ADMIN"] },
 ];
 
 export function NavLinks() {
+  const user = useAuthStore((s) => s.user);
+  if (!user) return null;
+
+  const visibleLinks = allLinks.filter((link) => link.roles.includes(user.rol));
+
   return (
     <div className="hidden md:flex items-center gap-1">
-      {links.map((link) => {
+      {visibleLinks.map((link) => {
         const Icon = link.icon;
         return (
           <NavLink

@@ -6,6 +6,7 @@ Centralizar estos valores facilita el mantenimiento:
 - Si se ajusta una regla de negocio, no hay que buscar valores hardcodeados.
 """
 from decimal import Decimal
+from django.db import models
 
 # ──────────────────────────────────────────────────────────
 # IMPUESTOS PERU
@@ -54,3 +55,11 @@ LONGITUD_DNI = 8
 LONGITUD_RUC = 11
 LONGITUD_CE_MIN = 9   # Carne de extranjeria
 LONGITUD_CE_MAX = 12
+
+class MetodoPago(models.TextChoices):
+    """Métodos de pago aceptados en el hotel."""
+    EFECTIVO = "EFECTIVO", "Efectivo"
+    TARJETA = "TARJETA", "Tarjeta de crédito/débito"
+    TRANSFERENCIA = "TRANSFERENCIA", "Transferencia bancaria"
+    YAPE = "YAPE", "Yape"
+    PLIN = "PLIN", "Plin"

@@ -272,12 +272,16 @@ class ReservaCancelarSerializer(serializers.Serializer):
 # ═══════════════════════════════════════════════════════════════
 class CargoEstanciaSerializer(serializers.ModelSerializer):
     """Serializer de lectura de cargos."""
-
     tipo_display = serializers.CharField(source="get_tipo_display", read_only=True)
+    metodo_pago_display = serializers.CharField(
+        source="get_metodo_pago_display",
+        read_only=True,
+        default="",
+    )
     registrado_por_username = serializers.CharField(
         source="registrado_por.username",
         read_only=True,
-        default=None,
+        default="",
     )
 
     class Meta:
@@ -291,6 +295,9 @@ class CargoEstanciaSerializer(serializers.ModelSerializer):
             "tipo_display",
             "fecha",
             "pagado",
+            "metodo_pago",
+            "metodo_pago_display",
+            "fecha_pago",
             "registrado_por_username",
         ]
         read_only_fields = ["id", "estancia", "fecha"]

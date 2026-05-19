@@ -8,6 +8,10 @@ import { DashboardPage } from "./pages/DashboardPage";
 import { PlanoHotelPage } from "./pages/PlanoHotelPage";
 import { ReservasPage } from "./pages/ReservasPage";
 import { EstanciasPage } from "./pages/EstanciasPage";
+import { PerfilPage } from "./pages/PerfilPage";
+import { HousekeepingPage } from "./pages/HousekeepingPage";
+import { ReportesPage } from "./pages/ReportesPage";
+import { TiposHabitacionPage } from "./pages/TiposHabitacionPage";
 import { ProtectedRoute } from "./components/layout/ProtectedRoute";
 
 function App() {
@@ -23,50 +27,22 @@ function App() {
             border: "1px solid #e5e7eb",
             boxShadow: "0 10px 15px -3px rgba(0,0,0,0.1)",
           },
-          success: {
-            iconTheme: { primary: "#10b981", secondary: "#fff" },
-          },
-          error: {
-            iconTheme: { primary: "#ef4444", secondary: "#fff" },
-          },
+          success: { iconTheme: { primary: "#10b981", secondary: "#fff" } },
+          error: { iconTheme: { primary: "#ef4444", secondary: "#fff" } },
         }}
       />
 
       <Routes>
         <Route path="/login" element={<LoginPage />} />
 
-        <Route
-          path="/"
-          element={
-            <ProtectedRoute>
-              <PlanoHotelPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/reservas"
-          element={
-            <ProtectedRoute>
-              <ReservasPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/estancias"
-          element={
-            <ProtectedRoute>
-              <EstanciasPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/dashboard"
-          element={
-            <ProtectedRoute>
-              <DashboardPage />
-            </ProtectedRoute>
-          }
-        />
+        <Route path="/" element={<ProtectedRoute><PlanoHotelPage /></ProtectedRoute>} />
+        <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
+        <Route path="/reservas" element={<ProtectedRoute><ReservasPage /></ProtectedRoute>} />
+        <Route path="/estancias" element={<ProtectedRoute><EstanciasPage /></ProtectedRoute>} />
+        <Route path="/perfil" element={<ProtectedRoute><PerfilPage /></ProtectedRoute>} />
+        <Route path="/housekeeping" element={<ProtectedRoute><HousekeepingPage /></ProtectedRoute>} />
+        <Route path="/reportes" element={<ProtectedRoute><ReportesPage /></ProtectedRoute>} />
+        <Route path="/tipos-habitacion" element={<ProtectedRoute><TiposHabitacionPage /></ProtectedRoute>} />
 
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>

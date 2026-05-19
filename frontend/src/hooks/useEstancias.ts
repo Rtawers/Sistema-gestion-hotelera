@@ -54,7 +54,8 @@ export function usePagarCargosPendientes(estanciaId: number) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: () => pagarCargosPendientes(estanciaId),
+    mutationFn: (metodoPago: string = "EFECTIVO") =>
+      pagarCargosPendientes(estanciaId, metodoPago),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["folio", estanciaId] });
       queryClient.invalidateQueries({ queryKey: ["estancias"] });

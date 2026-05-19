@@ -34,6 +34,7 @@ from apps.core.permissions import (
 )
 
 from . import selectors, services
+from .services import pagar_cargos_pendientes
 from .models import (
     CargoEstancia,
     Estancia,
@@ -424,14 +425,18 @@ class EstanciaViewSet(viewsets.ReadOnlyModelViewSet):
     )
     def pagar(self, request, pk=None):
         """
-        POST /api/v1/estancias/{id}/pagar/
         Marca todos los cargos pendientes como pagados.
+        
+        Body opcional:
+            metodo_pago: EFECTIVO (default), TARJETA, TRANSFERENCIA, YAPE, PLIN
         """
         estancia = self.get_object()
-        n = services.pagar_cargos_pendientes(estancia=estancia)
+        metodo_pago = request.data.get("metodo_pago", "EFECTIVO")
+        cant = pagar_cargos_pendientes(estancia=estancia, metodo_pago=metodo_pago)
         return Response({
-            "detail": f"{n} cargos marcados como pagados.",
-            "cargos_pagados": n,
+            "detail": f"{cant} cargos pagados con {metodo_pago}",
+            "cargos_pagados": cant,
+            "metodo_pago": metodo_pago,
         })
 
 

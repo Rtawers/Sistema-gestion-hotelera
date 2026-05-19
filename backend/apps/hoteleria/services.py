@@ -331,15 +331,23 @@ def agregar_cargo(
 
 
 @transaction.atomic
-def pagar_cargos_pendientes(*, estancia: Estancia) -> int:
+def pagar_cargos_pendientes(*, estancia: Estancia, metodo_pago: str = "EFECTIVO") -> int:
     """
     Marca todos los cargos pendientes de una estancia como pagados.
     Necesario antes de hacer checkout.
 
+    Args:
+        estancia: La estancia cuyos cargos se van a pagar.
+        metodo_pago: Método de pago (EFECTIVO, TARJETA, TRANSFERENCIA, YAPE, PLIN).
+
     Returns:
         Cantidad de cargos marcados como pagados.
     """
-    actualizados = estancia.cargos.filter(pagado=False).update(pagado=True)
+    actualizados = estancia.cargos.filter(pagado=False).update(
+        pagado=True,
+        metodo_pago=metodo_pago,
+        fecha_pago=timezone.now(),
+    )
     return actualizados
 
 

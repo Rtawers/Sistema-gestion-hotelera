@@ -53,3 +53,33 @@ export function getStoredUser(): User | null {
     return null;
   }
 }
+
+// ─── PERFIL ──────────────────────────────────────────
+export interface PerfilCompleto extends User {
+  first_name: string;
+  last_name: string;
+  telefono: string;
+  date_joined: string;
+  last_login: string | null;
+  es_recepcionista: boolean;
+  es_housekeeping: boolean;
+}
+
+export async function obtenerPerfil(): Promise<PerfilCompleto> {
+  const response = await apiClient.get<PerfilCompleto>("/auth/perfil/");
+  return response.data;
+}
+
+export interface ActualizarPerfilData {
+  first_name?: string;
+  last_name?: string;
+  email?: string;
+  telefono?: string;
+}
+
+export async function actualizarPerfil(
+  data: ActualizarPerfilData,
+): Promise<PerfilCompleto> {
+  const response = await apiClient.patch<PerfilCompleto>("/auth/perfil/", data);
+  return response.data;
+}

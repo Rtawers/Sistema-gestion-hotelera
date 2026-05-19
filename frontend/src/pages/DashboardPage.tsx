@@ -1,13 +1,77 @@
 /**
- * Pantalla principal (dashboard) - temporal.
- * En HITO 4 Parte 4 sera reemplazada por el Plano del Hotel.
+ * Dashboard principal con KPIs del hotel.
  */
+import {
+  Building,
+  Calendar,
+  BedDouble,
+  TrendingUp,
+  Loader2,
+  Users,
+  Sparkles,
+} from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { useAuthStore } from "../store/auth.store";
 import { Navbar } from "../components/layout/Navbar";
-import { CheckCircle2, Server, Sparkles, Users, BedDouble, Calendar } from "lucide-react";
+import { useHabitaciones } from "../hooks/useHabitaciones";
+import { useHoteles, useOcupacion } from "../hooks/useOcupacion";
+import { useReservas } from "../hooks/useReservas";
+import { useEstancias } from "../hooks/useEstancias";
+import { fechaHoyISO } from "../utils/format";
 
 export function DashboardPage() {
   const user = useAuthStore((s) => s.user);
+  const navigate = useNavigate();
+
+  const { data: hoteles } = useHoteles();
+  const hotelActivo = hoteles?.[0];
+
+  const { data: habitaciones, isLoading: lh } = useHabitaciones(hotelActivo?.id);
+  const { data: ocupacion } = useOcupacion(hotelActivo?.id, fechaHoyISO());
+  const { data: reservas } = useReservas({ hotel_id: hotelActivo?.id });
+  const { data: estancias } = useEstancias();
+
+  const estanciasEnCurso = estancias?.filter((e) => e.estado === "EN_CURSO").length ?? 0;
+  const reservasConfirmadas = reservas?.filter((r) => r.estado === "CONFIRMADA").length ?? 0;
+  const enLimpieza = habitaciones?.filter((h) => h.estado === "LIMPIEZA").length ?? 0;
+
+  const tarjetas = [
+    {
+      titulo: "Tasa de Ocupación",
+      valor: `${ocupacion?.tasa_pct ?? 0}%`,
+      icono: TrendingUp,
+      color: "bg-primary-100 text-primary-700",
+      ruta: "/reportes",
+    },
+    {
+      titulo: "Habitaciones",
+      valor: ocupacion?.total ?? 0,
+      icono: Building,
+      color: "bg-blue-100 text-blue-700",
+      ruta: "/",
+    },
+    {
+      titulo: "Reservas Confirmadas",
+      valor: reservasConfirmadas,
+      icono: Calendar,
+      color: "bg-green-100 text-green-700",
+      ruta: "/reservas",
+    },
+    {
+      titulo: "Huéspedes Hospedados",
+      valor: estanciasEnCurso,
+      icono: BedDouble,
+      color: "bg-purple-100 text-purple-700",
+      ruta: "/estancias",
+    },
+    {
+      titulo: "Pendientes de limpieza",
+      valor: enLimpieza,
+      icono: Sparkles,
+      color: "bg-amber-100 text-amber-700",
+      ruta: "/housekeeping",
+    },
+  ];
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -20,78 +84,76 @@ export function DashboardPage() {
             Bienvenido, {user?.username}
           </h1>
           <p className="text-gray-600 mt-1">
-            Rol: {user?.rol_display}
+            {hotelActivo?.nombre || "Hotel"} -{" "}
+            {new Date().toLocaleDateString("es-PE", {
+              weekday: "long",
+              year: "numeric",
+              month: "long",
+              day: "numeric",
+            })}
           </p>
         </div>
 
-        {/* Tarjetas de estado */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="p-2 bg-blue-100 rounded-lg">
-                <BedDouble className="w-5 h-5 text-blue-600" />
-              </div>
-              <h3 className="font-semibold text-gray-900">Habitaciones</h3>
-            </div>
-            <p className="text-sm text-gray-600">
-              Plano del hotel disponible en HITO 4 Parte 4
-            </p>
+        {/* KPIs */}
+        {lh && (
+          <div className="flex justify-center py-10">
+            <Loader2 className="w-10 h-10 animate-spin text-gray-400" />
           </div>
+        )}
 
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="p-2 bg-green-100 rounded-lg">
-                <Calendar className="w-5 h-5 text-green-600" />
-              </div>
-              <h3 className="font-semibold text-gray-900">Reservas</h3>
-            </div>
-            <p className="text-sm text-gray-600">
-              Gestion de reservas en HITO 4 Parte 5
-            </p>
+        {!lh && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+            {tarjetas.map((t) => {
+              const Icon = t.icono;
+              return (
+                <button
+                  key={t.titulo}
+                  type="button"
+                  onClick={() => navigate(t.ruta)}
+                  className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-md transition-all text-left hover:-translate-y-0.5"
+                >
+                  <div className={`inline-flex p-2 rounded-lg mb-3 ${t.color}`}>
+                    <Icon className="w-5 h-5" />
+                  </div>
+                  <p className="text-xs text-gray-500 mb-1">{t.titulo}</p>
+                  <p className="text-3xl font-bold text-gray-900">{t.valor}</p>
+                </button>
+              );
+            })}
           </div>
+        )}
 
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="p-2 bg-purple-100 rounded-lg">
-                <Users className="w-5 h-5 text-purple-600" />
-              </div>
-              <h3 className="font-semibold text-gray-900">Huespedes</h3>
-            </div>
-            <p className="text-sm text-gray-600">
-              Gestion de clientes en HITO 4 Parte 5
-            </p>
-          </div>
-        </div>
-
-        {/* Card de estado de conexion */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-          <div className="flex items-center gap-3 mb-4">
-            <Sparkles className="w-5 h-5 text-primary-600" />
-            <h2 className="text-lg font-bold text-gray-900">
-              Conexion al Backend
-            </h2>
-          </div>
-
-          <div className="space-y-3">
-            <div className="flex items-center gap-3 p-3 bg-green-50 rounded-lg">
-              <CheckCircle2 className="w-5 h-5 text-green-600 flex-shrink-0" />
-              <div className="flex-1">
-                <p className="font-semibold text-gray-900">Autenticacion JWT</p>
-                <p className="text-sm text-gray-600">
-                  Token activo, rol: {user?.rol}
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3 p-3 bg-blue-50 rounded-lg">
-              <Server className="w-5 h-5 text-blue-600 flex-shrink-0" />
-              <div className="flex-1">
-                <p className="font-semibold text-gray-900">API REST</p>
-                <p className="text-sm text-gray-600">
-                  {import.meta.env.VITE_API_URL}
-                </p>
-              </div>
-            </div>
+        {/* Acceso rápido */}
+        <div className="mt-8 bg-white rounded-xl border border-gray-200 p-6">
+          <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+            <Users className="w-5 h-5 text-primary-600" />
+            Acceso rápido
+          </h2>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <button
+              onClick={() => navigate("/")}
+              className="p-3 border border-gray-200 rounded-lg hover:bg-gray-50 text-sm font-medium text-gray-700"
+            >
+              Plano del Hotel
+            </button>
+            <button
+              onClick={() => navigate("/reservas")}
+              className="p-3 border border-gray-200 rounded-lg hover:bg-gray-50 text-sm font-medium text-gray-700"
+            >
+              Reservas
+            </button>
+            <button
+              onClick={() => navigate("/estancias")}
+              className="p-3 border border-gray-200 rounded-lg hover:bg-gray-50 text-sm font-medium text-gray-700"
+            >
+              Estancias / Folios
+            </button>
+            <button
+              onClick={() => navigate("/perfil")}
+              className="p-3 border border-gray-200 rounded-lg hover:bg-gray-50 text-sm font-medium text-gray-700"
+            >
+              Mi Perfil
+            </button>
           </div>
         </div>
       </main>

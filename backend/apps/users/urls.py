@@ -7,6 +7,7 @@ from .views import (
     LoginView,
     PerfilView,
     RegistroView,
+    PerfilDetailView,
 )
 
 app_name = "users"
@@ -22,4 +23,5 @@ urlpatterns = [
     # Gestion de usuarios (solo admin)
     path("registro/", RegistroView.as_view(), name="registro"),
     path("usuarios/", ListaUsuariosView.as_view(), name="lista_usuarios"),
+    path("perfil/", PerfilDetailView.as_view(), name="perfil-detalle"),
 ]

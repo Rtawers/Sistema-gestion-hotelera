@@ -42,3 +42,19 @@ export function useCambiarEstadoHabitacion() {
     },
   });
 }
+
+/**
+ * Hook que devuelve habitaciones que requieren atencion de housekeeping:
+ * - Estado LIMPIEZA (recien checkout)
+ * - Estado MANTENIMIENTO (por revisar)
+ */
+export function useHabitacionesHousekeeping(hotel_id?: number) {
+  const query = useHabitaciones(hotel_id);
+
+  return {
+    ...query,
+    data: query.data?.filter(
+      (h) => h.estado === "LIMPIEZA" || h.estado === "MANTENIMIENTO",
+    ),
+  };
+}

@@ -5,11 +5,16 @@ from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.views import TokenObtainPairView
+from rest_framework.generics import RetrieveUpdateAPIView
+
+
 
 from apps.core.permissions import IsAdmin
 
 from .models import User
 from .serializers import (
+    PerfilSerializer,
+    PerfilUpdateSerializer,
     CustomTokenObtainPairSerializer,
     RegistroUsuarioSerializer,
     UserSerializer,
@@ -120,3 +125,18 @@ class ListaUsuariosView(generics.ListAPIView):
     queryset = User.objects.all().order_by("username")
     serializer_class = UserSerializer
     permission_classes = [IsAdmin]
+
+class PerfilDetailView(RetrieveUpdateAPIView):
+    """
+    GET /api/v1/auth/perfil/    -> ver perfil del usuario logueado
+    PATCH /api/v1/auth/perfil/  -> actualizar campos limitados
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_object(self):
+        return self.request.user
+
+    def get_serializer_class(self):
+        if self.request.method in ["PATCH", "PUT"]:
+            return PerfilUpdateSerializer
+        return PerfilSerializer

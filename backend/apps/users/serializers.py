@@ -91,3 +91,37 @@ class RegistroUsuarioSerializer(serializers.ModelSerializer):
         user.set_password(password)
         user.save()
         return user
+    
+    
+class PerfilSerializer(serializers.ModelSerializer):
+    """Serializer del perfil del usuario logueado."""
+    rol_display = serializers.CharField(source="get_rol_display", read_only=True)
+    es_admin = serializers.BooleanField(read_only=True)
+    es_recepcionista = serializers.BooleanField(read_only=True)
+    es_housekeeping = serializers.BooleanField(read_only=True)
+
+    class Meta:
+        model = User
+        fields = [
+            "id",
+            "username",
+            "email",
+            "first_name",
+            "last_name",
+            "rol",
+            "rol_display",
+            "telefono",
+            "es_admin",
+            "es_recepcionista",
+            "es_housekeeping",
+            "date_joined",
+            "last_login",
+        ]
+        read_only_fields = ["id", "username", "rol", "date_joined", "last_login"]
+
+
+class PerfilUpdateSerializer(serializers.ModelSerializer):
+    """Serializer para actualizar el perfil propio (campos limitados)."""
+    class Meta:
+        model = User
+        fields = ["first_name", "last_name", "email", "telefono"]

@@ -50,14 +50,17 @@ export async function agregarCargo(
   return response.data;
 }
 
-/**
+/*
  * POST /estancias/{id}/pagar/
- * Marca todos los cargos pendientes como pagados.
  */
+ 
 export async function pagarCargosPendientes(
   estanciaId: number,
-): Promise<{ detail: string; cargos_pagados: number }> {
-  const response = await apiClient.post(`/estancias/${estanciaId}/pagar/`);
+  metodoPago: string = "EFECTIVO",
+): Promise<{ detail: string; cargos_pagados: number; metodo_pago: string }> {
+  const response = await apiClient.post(`/estancias/${estanciaId}/pagar/`, {
+    metodo_pago: metodoPago,
+  });
   return response.data;
 }
 
