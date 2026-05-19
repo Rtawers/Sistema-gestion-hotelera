@@ -361,6 +361,18 @@ class ReservaViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+        # Auditoria HU15
+        registrar_log(
+            usuario=request.user,
+            accion="CHECKIN",
+            detalles={
+                "reserva_id": reserva.id,
+                "estancia_id": estancia.id,
+                "habitacion": reserva.habitacion.numero,
+            },
+            ip=request.META.get("REMOTE_ADDR"),
+        )
+
         return Response(
             EstanciaSerializer(estancia).data,
             status=status.HTTP_201_CREATED,
@@ -391,6 +403,18 @@ class ReservaViewSet(viewsets.ModelViewSet):
                 {"detail": e.messages[0]},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+
+        # Auditoria HU15
+        registrar_log(
+            usuario=request.user,
+            accion="RESERVA_CANCELADA",
+            detalles={
+                "reserva_id": reserva.id,
+                "huesped": reserva.huesped.nombre_completo if reserva.huesped else None,
+                "habitacion": reserva.habitacion.numero,
+            },
+            ip=request.META.get("REMOTE_ADDR"),
+        )
 
         return Response(ReservaSerializer(reserva).data)
 
@@ -438,6 +462,18 @@ class EstanciaViewSet(viewsets.ReadOnlyModelViewSet):
                 {"detail": e.messages[0] if hasattr(e, "messages") else str(e)},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+
+        # Auditoria HU15
+        registrar_log(
+            usuario=request.user,
+            accion="CHECKOUT",
+            detalles={
+                "estancia_id": estancia.id,
+                "folio_id": folio.id,
+                "total": str(folio.total),
+            },
+            ip=request.META.get("REMOTE_ADDR"),
+        )
 
         return Response(FolioSerializer(folio).data)
 
@@ -501,7 +537,24 @@ class EstanciaViewSet(viewsets.ReadOnlyModelViewSet):
         """
         estancia = self.get_object()
         metodo_pago = request.data.get("metodo_pago", "EFECTIVO")
-        cant = pagar_cargos_pendientes(estancia=estancia, metodo_pago=metodo_pago)
+
+        cant = pagar_cargos_pendientes(
+            estancia=estancia,
+            metodo_pago=metodo_pago,
+        )
+
+        # Auditoria HU15
+        registrar_log(
+            usuario=request.user,
+            accion="PAGO_REGISTRADO",
+            detalles={
+                "estancia_id": estancia.id,
+                "metodo_pago": metodo_pago,
+                "cargos_pagados": cant,
+            },
+            ip=request.META.get("REMOTE_ADDR"),
+        )
+
         return Response({
             "detail": f"{cant} cargos pagados con {metodo_pago}",
             "cargos_pagados": cant,
@@ -557,6 +610,7 @@ class IncidenteViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         instancia = serializer.save(reportado_por=self.request.user)
+
         # Log de auditoria
         registrar_log(
             usuario=self.request.user,
@@ -566,6 +620,7 @@ class IncidenteViewSet(viewsets.ModelViewSet):
                 "habitacion": instancia.habitacion.numero,
                 "tipo": instancia.tipo,
             },
+            ip=self.request.META.get("REMOTE_ADDR"),
         )
 
 
@@ -582,13 +637,16 @@ class LogAuditoriaViewSet(viewsets.ReadOnlyModelViewSet):
 
     def get_queryset(self):
         qs = super().get_queryset()
+
         # Solo ADMIN puede ver auditoria
         if self.request.user.rol != "ADMIN":
             return qs.none()
+
         # Filtros opcionales
         accion = self.request.query_params.get("accion")
         if accion:
             qs = qs.filter(accion=accion)
+
         return qs[:200]  # limite de 200 logs por consulta
 
 

@@ -19,6 +19,8 @@ import { AccesoDenegadoPage } from "./pages/AccesoDenegadoPage";
 import { PortalReservaPage } from "./pages/PortalReservaPage";
 import { ReservaConfirmadaPage } from "./pages/ReservaConfirmadaPage";
 import { IncidentesPage } from "./pages/IncidentesPage";
+import { AuditoriaPage } from "./pages/AuditoriaPage";
+import { UsuariosPage } from "./pages/UsuariosPage";
 
 
 // Protectores
@@ -79,6 +81,23 @@ function App() {
           element={
             <RequireRole roles={["ADMIN"]}>
               <TiposHabitacionPage />
+            </RequireRole>
+          }
+        />
+
+        <Route
+          path="/usuarios"
+          element={
+            <RequireRole roles={["ADMIN"]}>
+              <UsuariosPage />
+            </RequireRole>
+          }
+        />
+        <Route
+          path="/auditoria"
+          element={
+            <RequireRole roles={["ADMIN"]}>
+              <AuditoriaPage />
             </RequireRole>
           }
         />

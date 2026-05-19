@@ -1,7 +1,8 @@
 """
 Views de autenticacion: login, refresh, perfil del usuario, registro.
 """
-from rest_framework import generics, permissions, status
+from rest_framework import generics, permissions, status, viewsets
+from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.views import TokenObtainPairView
@@ -18,6 +19,10 @@ from .serializers import (
     CustomTokenObtainPairSerializer,
     RegistroUsuarioSerializer,
     UserSerializer,
+    UsuarioListSerializer,
+    UsuarioCreateSerializer,
+    CambiarPasswordSerializer,
+
 )
 
 
@@ -140,3 +145,91 @@ class PerfilDetailView(RetrieveUpdateAPIView):
         if self.request.method in ["PATCH", "PUT"]:
             return PerfilUpdateSerializer
         return PerfilSerializer
+
+class UsuarioViewSet(viewsets.ModelViewSet):
+    """
+    GET    /api/v1/auth/usuarios/        -> listar (solo ADMIN)
+    POST   /api/v1/auth/usuarios/        -> crear empleado (solo ADMIN)
+    PATCH  /api/v1/auth/usuarios/{id}/   -> actualizar (solo ADMIN)
+    DELETE /api/v1/auth/usuarios/{id}/   -> desactivar (solo ADMIN)
+    POST   /api/v1/auth/usuarios/{id}/cambiar-password/ -> reset password
+    """
+    queryset = User.objects.all().order_by("-date_joined")
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_serializer_class(self):
+        if self.action == "create":
+            return UsuarioCreateSerializer
+        return UsuarioListSerializer
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        # Solo ADMIN puede gestionar usuarios
+        if self.request.user.rol != "ADMIN":
+            return qs.none()
+        return qs
+
+    def create(self, request, *args, **kwargs):
+        # Solo ADMIN puede crear usuarios
+        if request.user.rol != "ADMIN":
+            return Response(
+                {"detail": "No tienes permisos para crear usuarios."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.save()
+
+        # Log de auditoria
+        from apps.hoteleria.services import registrar_log
+        registrar_log(
+            usuario=request.user,
+            accion="USUARIO_CREADO",
+            detalles={
+                "usuario_id": user.id,
+                "username": user.username,
+                "rol": user.rol,
+            },
+            ip=request.META.get("REMOTE_ADDR"),
+        )
+
+        # Devolver con el serializer de lectura
+        out = UsuarioListSerializer(user)
+        return Response(out.data, status=status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=["post"], url_path="cambiar-password")
+    def cambiar_password(self, request, pk=None):
+        """Admin resetea la password de un empleado."""
+        if request.user.rol != "ADMIN":
+            return Response(
+                {"detail": "No tienes permisos."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        usuario = self.get_object()
+        serializer = CambiarPasswordSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        usuario.set_password(serializer.validated_data["nueva_password"])
+        usuario.save()
+
+        return Response({"detail": f"Password de {usuario.username} actualizada"})
+
+    @action(detail=True, methods=["post"], url_path="activar")
+    def activar(self, request, pk=None):
+        """Admin activa/desactiva un usuario."""
+        if request.user.rol != "ADMIN":
+            return Response(
+                {"detail": "No tienes permisos."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        usuario = self.get_object()
+        usuario.is_active = not usuario.is_active
+        usuario.save()
+
+        return Response({
+            "detail": f"Usuario {usuario.username} {'activado' if usuario.is_active else 'desactivado'}",
+            "is_active": usuario.is_active,
+        })

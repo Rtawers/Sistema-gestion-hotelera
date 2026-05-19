@@ -125,3 +125,50 @@ class PerfilUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ["first_name", "last_name", "email", "telefono"]
+
+class UsuarioListSerializer(serializers.ModelSerializer):
+    """Serializer para listar usuarios (sin password)."""
+    rol_display = serializers.CharField(source="get_rol_display", read_only=True)
+
+    class Meta:
+        model = User
+        fields = [
+            "id",
+            "username",
+            "first_name",
+            "last_name",
+            "email",
+            "rol",
+            "rol_display",
+            "telefono",
+            "is_active",
+            "date_joined",
+            "last_login",
+        ]
+
+
+class UsuarioCreateSerializer(serializers.ModelSerializer):
+    """Serializer para crear usuarios (con password)."""
+    password = serializers.CharField(write_only=True, min_length=8)
+
+    class Meta:
+        model = User
+        fields = [
+            "username",
+            "password",
+            "first_name",
+            "last_name",
+            "email",
+            "rol",
+            "telefono",
+        ]
+
+    def create(self, validated_data):
+        password = validated_data.pop("password")
+        user = User.objects.create_user(**validated_data, password=password)
+        return user
+
+
+class CambiarPasswordSerializer(serializers.Serializer):
+    """Serializer para que admin cambie password de un empleado."""
+    nueva_password = serializers.CharField(min_length=8, write_only=True)
