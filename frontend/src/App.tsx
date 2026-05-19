@@ -16,6 +16,8 @@ import { HousekeepingPage } from "./pages/HousekeepingPage";
 import { ReportesPage } from "./pages/ReportesPage";
 import { TiposHabitacionPage } from "./pages/TiposHabitacionPage";
 import { AccesoDenegadoPage } from "./pages/AccesoDenegadoPage";
+import { PortalReservaPage } from "./pages/PortalReservaPage";
+import { ReservaConfirmadaPage } from "./pages/ReservaConfirmadaPage";
 
 // Protectores
 import { ProtectedRoute } from "./components/layout/ProtectedRoute";
@@ -43,6 +45,13 @@ function App() {
         {/* ─── PUBLICAS ─── */}
         <Route path="/login" element={<LoginPage />} />
         <Route path="/acceso-denegado" element={<AccesoDenegadoPage />} />
+
+        {/* PORTAL PUBLICO DE CLIENTE EXTERNO */}
+        <Route path="/reservar" element={<PortalReservaPage />} />
+        <Route
+          path="/reserva-confirmada/:codigo"
+          element={<ReservaConfirmadaPage />}
+        />
 
         {/* TODO: portal publico /reservar lo agregamos en BLOQUE 3 */}
 
@@ -119,7 +128,7 @@ function App() {
         />
 
         {/* ─── RAIZ Y FALLBACK ─── */}
-        <Route path="/" element={<Navigate to="/login" replace />} />
+        <Route path="/" element={<Navigate to="/reservar" replace />} />
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     </BrowserRouter>
