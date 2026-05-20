@@ -32,7 +32,6 @@ class TestReservaBasico:
         assert reserva.estado == Reserva.Estado.CONFIRMADA
 
     def test_num_noches_se_calcula_correctamente(self):
-        """num_noches = fecha_salida - fecha_entrada."""
         reserva = ReservaFactory(
             fecha_entrada=date(2026, 6, 28),
             fecha_salida=date(2026, 7, 1),
@@ -40,7 +39,6 @@ class TestReservaBasico:
         assert reserva.num_noches == 3
 
     def test_total_huespedes(self):
-        """total_huespedes = adultos + ninos."""
         habitacion = HabitacionFactory(tipo__capacidad=4)
         reserva = ReservaFactory(
             habitacion=habitacion,

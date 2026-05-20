@@ -9,9 +9,10 @@ import { Button } from "../components/ui/Button";
 import { Input } from "../components/ui/Input";
 import { ReservaRow } from "../components/reservas/ReservaRow";
 import { NuevaReservaModal } from "../components/reservas/NuevaReservaModal";
+import { DetalleReservaModal } from "../components/reservas/DetalleReservaModal";
 import { useReservas } from "../hooks/useReservas";
 import { useHoteles } from "../hooks/useOcupacion";
-import type { EstadoReserva } from "../types/api.types";
+import type { EstadoReserva, Reserva } from "../types/api.types";
 
 const estadosFiltro: { value: EstadoReserva | ""; label: string }[] = [
   { value: "", label: "Todos los estados" },
@@ -25,6 +26,7 @@ export function ReservasPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [filtroEstado, setFiltroEstado] = useState<EstadoReserva | "">("");
   const [busqueda, setBusqueda] = useState("");
+  const [reservaDetalle, setReservaDetalle] = useState<Reserva | null>(null);
 
   const { data: hoteles } = useHoteles();
   const hotelActivo = hoteles?.[0];
@@ -37,7 +39,9 @@ export function ReservasPage() {
   // Filtro client-side por nombre/documento
   const reservasFiltradas = reservas?.filter((r) => {
     if (!busqueda) return true;
+
     const q = busqueda.toLowerCase();
+
     return (
       r.huesped.nombre_completo.toLowerCase().includes(q) ||
       r.huesped.num_doc.toLowerCase().includes(q) ||
@@ -55,8 +59,11 @@ export function ReservasPage() {
           <div>
             <div className="flex items-center gap-2">
               <Calendar className="w-7 h-7 text-primary-600" />
-              <h1 className="text-3xl font-bold text-gray-900">Reservas</h1>
+              <h1 className="text-3xl font-bold text-gray-900">
+                Reservas
+              </h1>
             </div>
+
             <p className="text-gray-600 mt-1">
               Gestion de reservas del hotel
             </p>
@@ -82,9 +89,12 @@ export function ReservasPage() {
               icon={<Search className="w-4 h-4" />}
             />
           </div>
+
           <select
             value={filtroEstado}
-            onChange={(e) => setFiltroEstado(e.target.value as EstadoReserva | "")}
+            onChange={(e) =>
+              setFiltroEstado(e.target.value as EstadoReserva | "")
+            }
             className="px-3 py-2 border border-gray-300 rounded-lg focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 focus:outline-none"
           >
             {estadosFiltro.map((e) => (
@@ -107,66 +117,88 @@ export function ReservasPage() {
         {error && (
           <div className="flex items-center gap-3 p-4 bg-red-50 border border-red-200 rounded-xl">
             <AlertCircle className="w-5 h-5 text-red-600" />
-            <p className="text-red-800">Error al cargar las reservas.</p>
-          </div>
-        )}
-
-        {/* Vacio */}
-        {!isLoading && reservasFiltradas && reservasFiltradas.length === 0 && (
-          <div className="text-center py-20 text-gray-500 bg-white rounded-xl border border-gray-200">
-            <Calendar className="w-12 h-12 mx-auto mb-3 text-gray-300" />
-            <p className="font-medium">No hay reservas para mostrar.</p>
-            <p className="text-sm mt-1">
-              Cree una nueva reserva con el boton de arriba.
+            <p className="text-red-800">
+              Error al cargar las reservas.
             </p>
           </div>
         )}
 
+        {/* Vacio */}
+        {!isLoading &&
+          reservasFiltradas &&
+          reservasFiltradas.length === 0 && (
+            <div className="text-center py-20 text-gray-500 bg-white rounded-xl border border-gray-200">
+              <Calendar className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+
+              <p className="font-medium">
+                No hay reservas para mostrar.
+              </p>
+
+              <p className="text-sm mt-1">
+                Cree una nueva reserva con el boton de arriba.
+              </p>
+            </div>
+          )}
+
         {/* Tabla */}
-        {!isLoading && reservasFiltradas && reservasFiltradas.length > 0 && (
-          <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50 border-b border-gray-200">
-                  <tr>
-                    <th className="py-3 px-4 text-left text-xs font-semibold text-gray-600 uppercase">
-                      ID
-                    </th>
-                    <th className="py-3 px-4 text-left text-xs font-semibold text-gray-600 uppercase">
-                      Huesped
-                    </th>
-                    <th className="py-3 px-4 text-left text-xs font-semibold text-gray-600 uppercase">
-                      Habitacion
-                    </th>
-                    <th className="py-3 px-4 text-left text-xs font-semibold text-gray-600 uppercase">
-                      Fechas
-                    </th>
-                    <th className="py-3 px-4 text-right text-xs font-semibold text-gray-600 uppercase">
-                      Precio
-                    </th>
-                    <th className="py-3 px-4 text-left text-xs font-semibold text-gray-600 uppercase">
-                      Estado
-                    </th>
-                    <th className="py-3 px-4 text-right text-xs font-semibold text-gray-600 uppercase">
-                      Acciones
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {reservasFiltradas.map((r) => (
-                    <ReservaRow key={r.id} reserva={r} />
-                  ))}
-                </tbody>
-              </table>
+        {!isLoading &&
+          reservasFiltradas &&
+          reservasFiltradas.length > 0 && (
+            <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-gray-50 border-b border-gray-200">
+                    <tr>
+                      <th className="py-3 px-4 text-left text-xs font-semibold text-gray-600 uppercase">
+                        ID
+                      </th>
+
+                      <th className="py-3 px-4 text-left text-xs font-semibold text-gray-600 uppercase">
+                        Huesped
+                      </th>
+
+                      <th className="py-3 px-4 text-left text-xs font-semibold text-gray-600 uppercase">
+                        Habitacion
+                      </th>
+
+                      <th className="py-3 px-4 text-left text-xs font-semibold text-gray-600 uppercase">
+                        Fechas
+                      </th>
+
+                      <th className="py-3 px-4 text-right text-xs font-semibold text-gray-600 uppercase">
+                        Precio
+                      </th>
+
+                      <th className="py-3 px-4 text-left text-xs font-semibold text-gray-600 uppercase">
+                        Estado
+                      </th>
+
+                      <th className="py-3 px-4 text-right text-xs font-semibold text-gray-600 uppercase">
+                        Acciones
+                      </th>
+                    </tr>
+                  </thead>
+
+                  <tbody>
+                    {reservasFiltradas.map((r) => (
+                      <ReservaRow
+                        key={r.id}
+                        reserva={r}
+                        onVer={() => setReservaDetalle(r)}
+                      />
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="px-4 py-3 bg-gray-50 border-t border-gray-200 text-xs text-gray-500">
+                Total: {reservasFiltradas.length} reservas
+              </div>
             </div>
-            <div className="px-4 py-3 bg-gray-50 border-t border-gray-200 text-xs text-gray-500">
-              Total: {reservasFiltradas.length} reservas
-            </div>
-          </div>
-        )}
+          )}
       </main>
 
-      {/* Modal */}
+      {/* Modal nueva reserva */}
       {hotelActivo && (
         <NuevaReservaModal
           isOpen={modalOpen}
@@ -174,6 +206,12 @@ export function ReservasPage() {
           hotelId={hotelActivo.id}
         />
       )}
+
+      {/* Modal detalle reserva */}
+      <DetalleReservaModal
+        reserva={reservaDetalle}
+        onClose={() => setReservaDetalle(null)}
+      />
     </div>
   );
 }

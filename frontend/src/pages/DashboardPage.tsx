@@ -1,5 +1,8 @@
 /**
  * Dashboard principal con KPIs del hotel.
+ *
+ * Los KPIs se calculan a partir de las habitaciones REALES (no del endpoint /ocupacion/)
+ * para evitar desincronización entre estado y reservas.
  */
 import {
   Building,
@@ -14,10 +17,9 @@ import { useNavigate } from "react-router-dom";
 import { useAuthStore } from "../store/auth.store";
 import { Navbar } from "../components/layout/Navbar";
 import { useHabitaciones } from "../hooks/useHabitaciones";
-import { useHoteles, useOcupacion } from "../hooks/useOcupacion";
+import { useHoteles } from "../hooks/useOcupacion";
 import { useReservas } from "../hooks/useReservas";
 import { useEstancias } from "../hooks/useEstancias";
-import { fechaHoyISO } from "../utils/format";
 
 export function DashboardPage() {
   const user = useAuthStore((s) => s.user);
@@ -27,28 +29,39 @@ export function DashboardPage() {
   const hotelActivo = hoteles?.[0];
 
   const { data: habitaciones, isLoading: lh } = useHabitaciones(hotelActivo?.id);
-  const { data: ocupacion } = useOcupacion(hotelActivo?.id, fechaHoyISO());
   const { data: reservas } = useReservas({ hotel_id: hotelActivo?.id });
   const { data: estancias } = useEstancias();
 
-  const estanciasEnCurso = estancias?.filter((e) => e.estado === "EN_CURSO").length ?? 0;
-  const reservasConfirmadas = reservas?.filter((r) => r.estado === "CONFIRMADA").length ?? 0;
-  const enLimpieza = habitaciones?.filter((h) => h.estado === "LIMPIEZA").length ?? 0;
+  // ─── Cálculos basados en datos REALES ──────────────
+  const totalHabitaciones = habitaciones?.length ?? 0;
+  const habitacionesOcupadas =
+    habitaciones?.filter((h) => h.estado === "OCUPADA").length ?? 0;
+  const tasaOcupacionReal =
+    totalHabitaciones > 0
+      ? Math.round((habitacionesOcupadas / totalHabitaciones) * 10000) / 100
+      : 0;
+
+  const estanciasEnCurso =
+    estancias?.filter((e) => e.estado === "EN_CURSO").length ?? 0;
+  const reservasConfirmadas =
+    reservas?.filter((r) => r.estado === "CONFIRMADA").length ?? 0;
+  const enLimpieza =
+    habitaciones?.filter((h) => h.estado === "LIMPIEZA").length ?? 0;
 
   const tarjetas = [
     {
       titulo: "Tasa de Ocupación",
-      valor: `${ocupacion?.tasa_pct ?? 0}%`,
+      valor: `${tasaOcupacionReal}%`,
       icono: TrendingUp,
       color: "bg-primary-100 text-primary-700",
       ruta: "/reportes",
     },
     {
       titulo: "Habitaciones",
-      valor: ocupacion?.total ?? 0,
+      valor: totalHabitaciones,
       icono: Building,
       color: "bg-blue-100 text-blue-700",
-      ruta: "/",
+      ruta: "/recepcion",
     },
     {
       titulo: "Reservas Confirmadas",
@@ -69,7 +82,7 @@ export function DashboardPage() {
       valor: enLimpieza,
       icono: Sparkles,
       color: "bg-amber-100 text-amber-700",
-      ruta: "/housekeeping",
+      ruta: "/tareas",
     },
   ];
 
@@ -131,7 +144,7 @@ export function DashboardPage() {
           </h2>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <button
-              onClick={() => navigate("/")}
+              onClick={() => navigate("/recepcion")}
               className="p-3 border border-gray-200 rounded-lg hover:bg-gray-50 text-sm font-medium text-gray-700"
             >
               Plano del Hotel

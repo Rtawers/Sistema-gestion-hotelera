@@ -6,6 +6,7 @@ import {
   listarReservas,
   crearReserva,
   cancelarReserva,
+  confirmarReserva,
   hacerCheckin,
 } from "../api/reservas.api";
 import type { ReservaCreate, EstadoReserva } from "../types/api.types";
@@ -41,6 +42,18 @@ export function useCancelarReserva() {
   return useMutation({
     mutationFn: ({ id, motivo }: { id: number; motivo?: string }) =>
       cancelarReserva(id, motivo),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["reservas"] });
+      queryClient.invalidateQueries({ queryKey: ["habitaciones"] });
+    },
+  });
+}
+
+export function useConfirmarReserva() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: number) => confirmarReserva(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["reservas"] });
       queryClient.invalidateQueries({ queryKey: ["habitaciones"] });

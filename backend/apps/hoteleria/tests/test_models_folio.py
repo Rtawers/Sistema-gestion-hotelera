@@ -2,8 +2,7 @@
 Tests del modelo Folio.
 
 Validan el calculo correcto de IGV (18%) y el redondeo contable.
-La rubrica AG-C08-C1 evalua estos calculos como aplicacion de
-principios matematicos.
+Tambien validan la propiedad tiene_deuda, que indica si el folio tiene cargos no pagados.
 """
 from decimal import Decimal
 
@@ -34,11 +33,9 @@ class TestFolioCalculoIGV:
     """Tests del calculo IGV = 18% sobre subtotal."""
 
     def test_igv_rate_es_18_porciento(self):
-        """La constante IGV_RATE debe ser 0.18 (18%)."""
         assert Folio.IGV_RATE == Decimal("0.18")
 
     def test_calculo_con_un_cargo(self, folio_con_estancia):
-        """Cargo de S/ 100 -> IGV S/ 18 -> Total S/ 118."""
         folio = folio_con_estancia
         CargoEstancia.objects.create(
             estancia=folio.estancia,
@@ -71,10 +68,6 @@ class TestFolioCalculoIGV:
         assert folio.total == Decimal("177.59")
 
     def test_redondeo_a_2_decimales(self, folio_con_estancia):
-        """
-        100.55 * 0.18 = 18.0990 -> redondea a 18.10
-        Valida el quantize(Decimal('0.01')).
-        """
         folio = folio_con_estancia
         CargoEstancia.objects.create(
             estancia=folio.estancia,

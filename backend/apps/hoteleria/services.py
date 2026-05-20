@@ -141,6 +141,23 @@ def cancelar_reserva(*, reserva: Reserva, motivo: str = "") -> Reserva:
 
     return reserva
 
+@transaction.atomic
+def confirmar_reserva(*, reserva: Reserva, usuario):
+    """
+    Confirma una reserva pendiente.
+    PENDIENTE -> CONFIRMADA
+    """
+
+    if reserva.estado != Reserva.Estado.PENDIENTE:
+        raise ValidationError(
+            f"Solo se pueden confirmar reservas PENDIENTES. Estado actual: {reserva.estado}"
+        )
+
+    reserva.estado = Reserva.Estado.CONFIRMADA
+    reserva.save(update_fields=["estado", "updated_at"])
+
+    return reserva
+
 
 # ============================================================
 # CHECK-IN
@@ -443,12 +460,19 @@ def crear_reserva_publica(
 ) -> "Reserva":
     """
     Crea una reserva desde el portal publico (sin login).
-    Estado inicial: PENDIENTE (recepcion debe confirmarla).
+
+    Estado inicial:
+        PENDIENTE
+
+    Flujo:
+        WEB -> PENDIENTE -> CONFIRMADA -> CHECKIN -> ESTANCIA
     """
     from .models import Reserva
     from apps.hoteleria.models import Huesped
 
-    # 1. Buscar o crear el huesped por num_doc
+    # =========================================================
+    # 1. Buscar o crear huesped
+    # =========================================================
     huesped, creado = Huesped.objects.get_or_create(
         num_doc=num_doc,
         defaults={
@@ -461,44 +485,68 @@ def crear_reserva_publica(
         },
     )
 
-    # Si ya existia, actualizar contacto por si cambio
+    # Actualizar contacto si ya existia
     if not creado:
-        if email and not huesped.email:
+        if email:
             huesped.email = email
-        if telefono and not huesped.telefono:
+
+        if telefono:
             huesped.telefono = telefono
+
         huesped.save()
 
-    # 2. Validar disponibilidad (overlap check)
+    # =========================================================
+    # 2. Validar disponibilidad
+    # =========================================================
     overlap = Reserva.objects.filter(
         habitacion=habitacion,
-        estado__in=["PENDIENTE", "CONFIRMADA"],
+        estado__in=[
+            Reserva.Estado.PENDIENTE,
+            Reserva.Estado.CONFIRMADA,
+        ],
         fecha_entrada__lt=check_out,
         fecha_salida__gt=check_in,
     ).exists()
 
     if overlap:
-        raise ValueError(
-            f"La habitacion {habitacion.numero} no esta disponible en esas fechas."
+        raise ValidationError(
+            f"La habitacion {habitacion.numero} "
+            f"no esta disponible en esas fechas."
         )
 
-    # 3. Crear reserva en estado PENDIENTE
+    # =========================================================
+    # 3. Calcular precio total
+    # =========================================================
+    calculo = selectors.calcular_precio_estadia(
+        tipo_habitacion=habitacion.tipo,
+        fecha_entrada=check_in,
+        fecha_salida=check_out,
+    )
+
+    # =========================================================
+    # 4. Crear reserva
+    # =========================================================
     reserva = Reserva.objects.create(
-    hotel=habitacion.hotel,
-    huesped=huesped,
-    habitacion=habitacion,
+        hotel=habitacion.hotel,
+        huesped=huesped,
+        habitacion=habitacion,
 
-    fecha_entrada=check_in,
-    fecha_salida=check_out,
+        fecha_entrada=check_in,
+        fecha_salida=check_out,
 
-    num_adultos=adultos,
-    num_ninos=ninos,
+        num_adultos=adultos,
+        num_ninos=ninos,
 
-    estado="PENDIENTE",
-    origen="WEB",
-)
+        # 🔥 FIX REAL
+        precio_total=calculo["total"],
 
-    # 4. Log de auditoria
+        estado=Reserva.Estado.PENDIENTE,
+        origen="WEB",
+    )
+
+    # =========================================================
+    # 5. Auditoria
+    # =========================================================
     registrar_log(
         usuario=None,
         accion="RESERVA_CREADA",
@@ -507,6 +555,7 @@ def crear_reserva_publica(
             "habitacion": habitacion.numero,
             "huesped_doc": num_doc,
             "origen": "WEB_PUBLICO_PORTAL",
+            "precio_total": str(reserva.precio_total),
         },
     )
 

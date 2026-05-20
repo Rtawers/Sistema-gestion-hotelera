@@ -12,9 +12,15 @@ import { useState } from "react";
 import toast from "react-hot-toast";
 import axios from "axios";
 import {
+  SeleccionarMetodoPagoModal,
+  type MetodoPago,
+} from "./SeleccionarMetodoPagoModal";
+
+import {
   Plus,
   CreditCard,
   LogOut,
+  Download,
   AlertTriangle,
   CheckCircle2,
   BedDouble,
@@ -24,17 +30,30 @@ import {
   Sparkles,
   HelpCircle,
 } from "lucide-react";
+
+import { generarPDFFolio } from "../../utils/generarPDFFolio";
 import { Modal } from "../ui/Modal";
 import { Button } from "../ui/Button";
 import { Badge } from "../ui/Badge";
+
 import {
   useFolio,
   usePagarCargosPendientes,
   useHacerCheckout,
 } from "../../hooks/useEstancias";
-import { formatearMoneda, formatearFecha } from "../../utils/format";
+
+import {
+  formatearMoneda,
+  formatearFecha,
+} from "../../utils/format";
+
 import { AgregarCargoModal } from "./AgregarCargoModal";
-import type { Estancia, CargoEstancia, TipoCargo } from "../../types/api.types";
+
+import type {
+  Estancia,
+  CargoEstancia,
+  TipoCargo,
+} from "../../types/api.types";
 
 interface FolioModalProps {
   isOpen: boolean;
@@ -51,64 +70,64 @@ const iconosPorTipo: { [key: string]: typeof BedDouble } = {
   OTRO: HelpCircle,
 };
 
-export function FolioModal({ isOpen, onClose, estancia }: FolioModalProps) {
+export function FolioModal({
+  isOpen,
+  onClose,
+  estancia,
+}: FolioModalProps) {
   const [cargoModalOpen, setCargoModalOpen] = useState(false);
+  const [metodoPagoOpen, setMetodoPagoOpen] = useState(false);
 
-  // Obtener folio actualizado (no usar el de la estancia, puede estar desactualizado)
-  const { data: folio, isLoading } = useFolio(isOpen ? estancia.id : undefined);
+  // Obtener folio actualizado
+  const { data: folio, isLoading } = useFolio(
+    isOpen ? estancia.id : undefined,
+  );
 
   const pagar = usePagarCargosPendientes(estancia.id);
   const checkout = useHacerCheckout();
 
- const handlePagar = () => {
-  if (!folio?.tiene_deuda) return;
+  const handlePagar = () => {
+    if (!folio?.tiene_deuda) return;
 
-  const metodos = [
-    "EFECTIVO",
-    "TARJETA",
-    "TRANSFERENCIA",
-    "YAPE",
-    "PLIN",
-  ];
+    setMetodoPagoOpen(true);
+  };
 
-  const input = window.prompt(
-    `Seleccione metodo de pago:\n\n1) EFECTIVO\n2) TARJETA\n3) TRANSFERENCIA\n4) YAPE\n5) PLIN\n\nEscriba el numero (1-5):`,
-    "1",
-  );
+  const handleConfirmarPago = (metodoPago: MetodoPago) => {
+    pagar.mutate(metodoPago, {
+      onSuccess: (res) => {
+        toast.success(
+          `${res.cargos_pagados} cargos pagados con ${metodoPago}`,
+        );
 
-  if (!input) return;
+        setMetodoPagoOpen(false);
+      },
 
-  const idx = parseInt(input.trim()) - 1;
-  if (idx < 0 || idx >= metodos.length) {
-    toast.error("Opcion invalida");
-    return;
-  }
-
-  const metodoPago = metodos[idx];
-
-  pagar.mutate(metodoPago, {
-    onSuccess: (res) => {
-      toast.success(`${res.cargos_pagados} cargos pagados con ${metodoPago}`);
-    },
-    onError: (e: unknown) => {
-      if (axios.isAxiosError(e)) {
-        toast.error(e.response?.data?.detail || "Error al pagar");
-      } else {
-        toast.error("Error de conexion");
-      }
-    },
-  });
-};
+      onError: (e: unknown) => {
+        if (axios.isAxiosError(e)) {
+          toast.error(
+            e.response?.data?.detail || "Error al pagar",
+          );
+        } else {
+          toast.error("Error de conexion");
+        }
+      },
+    });
+  };
 
   const handleCheckout = () => {
     if (folio?.tiene_deuda) {
-      toast.error("No se puede hacer check-out con cargos pendientes");
+      toast.error(
+        "No se puede hacer check-out con cargos pendientes",
+      );
+
       return;
     }
 
-    if (!window.confirm(
-      "Confirmar check-out? La habitacion pasara a LIMPIEZA."
-    )) {
+    if (
+      !window.confirm(
+        "Confirmar check-out? La habitacion pasara a LIMPIEZA.",
+      )
+    ) {
       return;
     }
 
@@ -117,12 +136,21 @@ export function FolioModal({ isOpen, onClose, estancia }: FolioModalProps) {
         toast.success(
           `Check-out realizado. Habitacion ${estancia.habitacion.numero} a LIMPIEZA.`,
         );
+
         onClose();
       },
+
       onError: (e: unknown) => {
         if (axios.isAxiosError(e)) {
-          const detail = e.response?.data?.detail || "Error al hacer check-out";
-          toast.error(typeof detail === "string" ? detail : JSON.stringify(detail));
+          const detail =
+            e.response?.data?.detail ||
+            "Error al hacer check-out";
+
+          toast.error(
+            typeof detail === "string"
+              ? detail
+              : JSON.stringify(detail),
+          );
         } else {
           toast.error("Error de conexion");
         }
@@ -141,37 +169,57 @@ export function FolioModal({ isOpen, onClose, estancia }: FolioModalProps) {
         size="xl"
       >
         {isLoading || !folio ? (
-          <div className="text-center py-10 text-gray-500">Cargando folio...</div>
+          <div className="text-center py-10 text-gray-500">
+            Cargando folio...
+          </div>
         ) : (
           <div className="space-y-5">
-            {/* Info de la estancia */}
+            {/* Info estancia */}
             <div className="grid grid-cols-2 gap-3">
               <div className="p-3 bg-blue-50 rounded-lg">
-                <p className="text-xs text-blue-600 font-medium">Habitacion</p>
+                <p className="text-xs text-blue-600 font-medium">
+                  Habitacion
+                </p>
+
                 <p className="font-bold text-blue-900">
                   Hab. {estancia.habitacion.numero}
                 </p>
+
                 <p className="text-xs text-blue-700">
                   {estancia.habitacion.tipo_nombre}
                 </p>
               </div>
+
               <div className="p-3 bg-purple-50 rounded-lg">
-                <p className="text-xs text-purple-600 font-medium">Check-in</p>
-                <p className="font-bold text-purple-900">
-                  {formatearFecha(estancia.fecha_checkin.split("T")[0])}
+                <p className="text-xs text-purple-600 font-medium">
+                  Check-in
                 </p>
-                <Badge color={estancia.estado === "EN_CURSO" ? "green" : "gray"}>
+
+                <p className="font-bold text-purple-900">
+                  {formatearFecha(
+                    estancia.fecha_checkin.split("T")[0],
+                  )}
+                </p>
+
+                <Badge
+                  color={
+                    estancia.estado === "EN_CURSO"
+                      ? "green"
+                      : "gray"
+                  }
+                >
                   {estancia.estado_display}
                 </Badge>
               </div>
             </div>
 
-            {/* Lista de cargos */}
+            {/* Lista cargos */}
             <div>
               <div className="flex items-center justify-between mb-2">
                 <h3 className="font-semibold text-gray-900">
                   Cargos ({folio.cargos.length})
                 </h3>
+
                 {estancia.estado === "EN_CURSO" && (
                   <Button
                     variant="secondary"
@@ -191,7 +239,9 @@ export function FolioModal({ isOpen, onClose, estancia }: FolioModalProps) {
                   </p>
                 ) : (
                   folio.cargos.map((cargo: CargoEstancia) => {
-                    const Icon = iconosPorTipo[cargo.tipo] || HelpCircle;
+                    const Icon =
+                      iconosPorTipo[cargo.tipo] || HelpCircle;
+
                     return (
                       <div
                         key={cargo.id}
@@ -200,21 +250,27 @@ export function FolioModal({ isOpen, onClose, estancia }: FolioModalProps) {
                         <div className="p-1.5 bg-gray-100 rounded-lg">
                           <Icon className="w-4 h-4 text-gray-600" />
                         </div>
+
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium text-gray-900 truncate">
                             {cargo.concepto}
                           </p>
+
                           <p className="text-xs text-gray-500">
                             {cargo.tipo_display}
                           </p>
                         </div>
+
                         <p className="text-sm font-semibold text-gray-900">
                           {formatearMoneda(cargo.monto)}
                         </p>
+
                         {cargo.pagado ? (
                           <Badge color="green">Pagado</Badge>
                         ) : (
-                          <Badge color="amber">Pendiente</Badge>
+                          <Badge color="amber">
+                            Pendiente
+                          </Badge>
                         )}
                       </div>
                     );
@@ -227,44 +283,68 @@ export function FolioModal({ isOpen, onClose, estancia }: FolioModalProps) {
             <div className="bg-gray-50 rounded-xl p-4 space-y-2">
               <div className="flex justify-between text-sm text-gray-600">
                 <span>Subtotal</span>
-                <span className="font-medium">{formatearMoneda(folio.subtotal)}</span>
+
+                <span className="font-medium">
+                  {formatearMoneda(folio.subtotal)}
+                </span>
               </div>
+
               <div className="flex justify-between text-sm text-gray-600">
                 <span>IGV (18%)</span>
-                <span className="font-medium">{formatearMoneda(folio.igv)}</span>
+
+                <span className="font-medium">
+                  {formatearMoneda(folio.igv)}
+                </span>
               </div>
+
               <div className="border-t border-gray-300 pt-2 flex justify-between font-bold text-gray-900">
                 <span>TOTAL</span>
+
                 <span className="text-2xl text-primary-700">
                   {formatearMoneda(folio.total)}
                 </span>
               </div>
             </div>
 
-            {/* Estado del folio */}
-            {folio.tiene_deuda && estancia.estado === "EN_CURSO" && (
-              <div className="flex items-center gap-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
-                <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0" />
-                <p className="text-sm text-amber-800">
-                  Existen cargos sin pagar. <strong>Debe pagarlos antes del check-out</strong>.
-                </p>
-              </div>
-            )}
+            {/* Estado */}
+            {folio.tiene_deuda &&
+              estancia.estado === "EN_CURSO" && (
+                <div className="flex items-center gap-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                  <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0" />
 
-            {!folio.tiene_deuda && estancia.estado === "EN_CURSO" && (
-              <div className="flex items-center gap-3 p-3 bg-green-50 border border-green-200 rounded-lg">
-                <CheckCircle2 className="w-5 h-5 text-green-600 flex-shrink-0" />
-                <p className="text-sm text-green-800">
-                  Todos los cargos estan pagados. Puede hacer check-out.
-                </p>
-              </div>
-            )}
+                  <p className="text-sm text-amber-800">
+                    Existen cargos sin pagar.{" "}
+                    <strong>
+                      Debe pagarlos antes del check-out
+                    </strong>
+                    .
+                  </p>
+                </div>
+              )}
+
+            {!folio.tiene_deuda &&
+              estancia.estado === "EN_CURSO" && (
+                <div className="flex items-center gap-3 p-3 bg-green-50 border border-green-200 rounded-lg">
+                  <CheckCircle2 className="w-5 h-5 text-green-600 flex-shrink-0" />
+
+                  <p className="text-sm text-green-800">
+                    Todos los cargos estan pagados.
+                    Puede hacer check-out.
+                  </p>
+                </div>
+              )}
 
             {folio.estado === "CERRADO" && (
               <div className="flex items-center gap-3 p-3 bg-gray-100 border border-gray-300 rounded-lg">
                 <CheckCircle2 className="w-5 h-5 text-gray-600 flex-shrink-0" />
+
                 <p className="text-sm text-gray-700">
-                  Folio cerrado el {folio.fecha_cierre && formatearFecha(folio.fecha_cierre.split("T")[0])}.
+                  Folio cerrado el{" "}
+                  {folio.fecha_cierre &&
+                    formatearFecha(
+                      folio.fecha_cierre.split("T")[0],
+                    )}
+                  .
                 </p>
               </div>
             )}
@@ -272,8 +352,25 @@ export function FolioModal({ isOpen, onClose, estancia }: FolioModalProps) {
             {/* Acciones */}
             {estancia.estado === "EN_CURSO" && (
               <div className="flex flex-wrap gap-2 pt-4 border-t border-gray-200">
-                <Button variant="secondary" onClick={onClose}>
+                <Button
+                  variant="secondary"
+                  onClick={onClose}
+                >
                   Cerrar
+                </Button>
+
+                <Button
+                  variant="secondary"
+                  icon={<Download className="w-4 h-4" />}
+                  onClick={() => {
+                    if (folio) {
+                      generarPDFFolio(estancia, folio);
+                    }
+
+                    toast.success("PDF descargado");
+                  }}
+                >
+                  Descargar PDF
                 </Button>
 
                 {folio.tiene_deuda && (
@@ -288,12 +385,18 @@ export function FolioModal({ isOpen, onClose, estancia }: FolioModalProps) {
                 )}
 
                 <Button
-                  variant={folio.tiene_deuda ? "secondary" : "primary"}
+                  variant={
+                    folio.tiene_deuda
+                      ? "secondary"
+                      : "primary"
+                  }
                   icon={<LogOut className="w-4 h-4" />}
                   loading={checkout.isPending}
                   onClick={handleCheckout}
                   disabled={folio.tiene_deuda}
-                  className={!folio.tiene_deuda ? "ml-auto" : ""}
+                  className={
+                    !folio.tiene_deuda ? "ml-auto" : ""
+                  }
                 >
                   Realizar Check-out
                 </Button>
@@ -303,11 +406,20 @@ export function FolioModal({ isOpen, onClose, estancia }: FolioModalProps) {
         )}
       </Modal>
 
-      {/* Submodal para agregar cargo */}
+      {/* Modal agregar cargo */}
       <AgregarCargoModal
         isOpen={cargoModalOpen}
         onClose={() => setCargoModalOpen(false)}
         estanciaId={estancia.id}
+      />
+
+      {/* Modal seleccionar metodo pago */}
+      <SeleccionarMetodoPagoModal
+        isOpen={metodoPagoOpen}
+        onClose={() => setMetodoPagoOpen(false)}
+        onConfirmar={handleConfirmarPago}
+        monto={folio ? parseFloat(String(folio.total)) : 0}
+        loading={pagar.isPending}
       />
     </>
   );

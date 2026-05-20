@@ -1,6 +1,6 @@
-"""
-Factories para generar data de prueba con factory_boy.
-"""
+
+# Muchachos este archivo llamado Factories es creado para generar data de prueba con factory_boy.
+
 from datetime import date, timedelta
 from decimal import Decimal
 

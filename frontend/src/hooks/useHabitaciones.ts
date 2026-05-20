@@ -39,6 +39,7 @@ export function useCambiarEstadoHabitacion() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["habitaciones"] });
       queryClient.invalidateQueries({ queryKey: ["ocupacion"] });
+      queryClient.invalidateQueries({ queryKey: ["housekeeping"] });
     },
   });
 }

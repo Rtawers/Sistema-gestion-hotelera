@@ -66,7 +66,7 @@ export function PlanoHotelPage() {
           </div>
 
           {/* KPI Ocupacion */}
-          {ocupacion && (
+          {habitaciones && habitaciones.length > 0 && (
             <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-primary-100 rounded-lg">
@@ -75,10 +75,16 @@ export function PlanoHotelPage() {
                 <div>
                   <p className="text-xs text-gray-500">Ocupacion hoy</p>
                   <p className="text-2xl font-bold text-gray-900">
-                    {ocupacion.tasa_pct}%
+                    {Math.round(
+                      (habitaciones.filter((h) => h.estado === "OCUPADA").length /
+                        habitaciones.length) *
+                        10000,
+                    ) / 100}
+                    %
                   </p>
                   <p className="text-xs text-gray-500">
-                    {ocupacion.ocupadas} / {ocupacion.total} habitaciones
+                    {habitaciones.filter((h) => h.estado === "OCUPADA").length} /{" "}
+                    {habitaciones.length} habitaciones
                   </p>
                 </div>
               </div>

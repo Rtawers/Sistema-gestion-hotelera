@@ -3,33 +3,64 @@
  * Muestra info clave + acciones segun el estado.
  */
 import { useState } from "react";
-import { LogIn, X, Eye } from "lucide-react";
+import { LogIn, X, Eye, CheckCircle } from "lucide-react";
 import toast from "react-hot-toast";
 import axios from "axios";
 import { Badge, colorPorEstadoReserva } from "../ui/Badge";
 import { Button } from "../ui/Button";
 import { formatearFecha, formatearMoneda } from "../../utils/format";
-import { useCancelarReserva, useHacerCheckin } from "../../hooks/useReservas";
+import { useCancelarReserva, useHacerCheckin, useConfirmarReserva } from "../../hooks/useReservas";
 import type { Reserva } from "../../types/api.types";
 
 interface ReservaRowProps {
   reserva: Reserva;
+  onVer: () => void;
 }
 
-export function ReservaRow({ reserva }: ReservaRowProps) {
+export function ReservaRow({ reserva, onVer }: ReservaRowProps) {
   const [accionEnCurso, setAccionEnCurso] = useState<string | null>(null);
 
   const cancelar = useCancelarReserva();
   const checkin = useHacerCheckin();
+  const confirmar = useConfirmarReserva();
 
+  const puedeConfirmar = reserva.estado === "PENDIENTE";
   const puedeCheckin = reserva.estado === "CONFIRMADA";
   const puedeCancelar = ["PENDIENTE", "CONFIRMADA"].includes(reserva.estado);
+
+  const handleConfirmar = () => {
+    setAccionEnCurso("confirmar");
+
+    confirmar.mutate(reserva.id, {
+      onSuccess: () => {
+        toast.success("Reserva confirmada");
+        setAccionEnCurso(null);
+      },
+      onError: (e: unknown) => {
+        setAccionEnCurso(null);
+
+        if (axios.isAxiosError(e)) {
+          const detail = e.response?.data?.detail || "Error al confirmar";
+
+          toast.error(
+            typeof detail === "string"
+              ? detail
+              : JSON.stringify(detail)
+          );
+        } else {
+          toast.error("Error de conexion");
+        }
+      },
+    });
+  };
 
   const handleCheckin = () => {
     setAccionEnCurso("checkin");
     checkin.mutate(reserva.id, {
       onSuccess: () => {
-        toast.success(`Check-in realizado para ${reserva.huesped.nombre_completo}`);
+        toast.success(
+          `Check-in realizado para ${reserva.huesped.nombre_completo}`,
+        );
         setAccionEnCurso(null);
       },
       onError: (e: unknown) => {
@@ -110,7 +141,8 @@ export function ReservaRow({ reserva }: ReservaRowProps) {
           {formatearMoneda(reserva.precio_total)}
         </p>
         <p className="text-xs text-gray-500">
-          {reserva.total_huespedes} {reserva.total_huespedes === 1 ? "persona" : "personas"}
+          {reserva.total_huespedes}{" "}
+          {reserva.total_huespedes === 1 ? "persona" : "personas"}
         </p>
       </td>
 
@@ -123,7 +155,29 @@ export function ReservaRow({ reserva }: ReservaRowProps) {
 
       {/* Acciones */}
       <td className="py-3 px-4">
-        <div className="flex items-center gap-1 justify-end">
+        <div className="flex items-center gap-1 justify-end flex-wrap">
+          {/* Boton VER siempre disponible */}
+          <Button
+            variant="ghost"
+            size="sm"
+            icon={<Eye className="w-3.5 h-3.5" />}
+            onClick={onVer}
+          >
+            Ver
+          </Button>
+
+          {puedeConfirmar && (
+            <Button
+              variant="primary"
+              size="sm"
+              icon={<CheckCircle className="w-3.5 h-3.5" />}
+              loading={accionEnCurso === "confirmar"}
+              onClick={handleConfirmar}
+            >
+              Confirmar
+            </Button>
+          )}
+
           {puedeCheckin && (
             <Button
               variant="primary"
@@ -144,16 +198,6 @@ export function ReservaRow({ reserva }: ReservaRowProps) {
               onClick={handleCancelar}
             >
               Cancelar
-            </Button>
-          )}
-          {!puedeCheckin && !puedeCancelar && (
-            <Button
-              variant="ghost"
-              size="sm"
-              icon={<Eye className="w-3.5 h-3.5" />}
-              disabled
-            >
-              Ver
             </Button>
           )}
         </div>

@@ -32,7 +32,7 @@ export async function cambiarEstadoHabitacion(
   nuevo_estado: EstadoHabitacion,
 ): Promise<Habitacion> {
   const response = await apiClient.patch<Habitacion>(
-    `/habitaciones/${id}/housekeeping/`,
+    `/habitaciones/${id}/cambiar-estado/`,
     { nuevo_estado },
   );
   return response.data;

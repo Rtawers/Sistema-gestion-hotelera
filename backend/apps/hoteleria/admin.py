@@ -32,7 +32,7 @@ class HabitacionAdmin(admin.ModelAdmin):
     list_display = ("numero", "hotel", "tipo", "piso", "estado", "activa")
     list_filter = ("hotel", "estado", "piso", "activa")
     search_fields = ("numero",)
-    list_editable = ("estado",)  # cambiar estado desde la lista (util para demo)
+    list_editable = ("estado",)  
 
 
 @admin.register(Huesped)

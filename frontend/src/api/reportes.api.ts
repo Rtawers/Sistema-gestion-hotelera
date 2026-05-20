@@ -14,3 +14,24 @@ export async function obtenerOcupacion(
   );
   return response.data;
 }
+
+export interface RevenuePorTipo {
+  rango: { desde: string; hasta: string };
+  total: number;
+  data: { tipo: string; revenue: number }[];
+}
+
+export async function obtenerRevenuePorTipo(
+  desde?: string,
+  hasta?: string,
+): Promise<RevenuePorTipo> {
+  const params: Record<string, string> = {};
+  if (desde) params.desde = desde;
+  if (hasta) params.hasta = hasta;
+
+  const response = await apiClient.get<RevenuePorTipo>(
+    "/hoteles/revenue-por-tipo/",
+    { params },
+  );
+  return response.data;
+}

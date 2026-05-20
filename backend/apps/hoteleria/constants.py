@@ -57,7 +57,7 @@ LONGITUD_CE_MIN = 9   # Carne de extranjeria
 LONGITUD_CE_MAX = 12
 
 class MetodoPago(models.TextChoices):
-    """Métodos de pago aceptados en el hotel."""
+    
     EFECTIVO = "EFECTIVO", "Efectivo"
     TARJETA = "TARJETA", "Tarjeta de crédito/débito"
     TRANSFERENCIA = "TRANSFERENCIA", "Transferencia bancaria"

@@ -1,7 +1,7 @@
 """
 Modelos del dominio hotelero.
 
-Decisiones arquitectonicas (sustentables en la rubrica AG-C08):
+Decisiones arquitectonicas:
 
 1. Decimal en lugar de float para todos los montos (precision contable, SUNAT-ready).
 2. TextChoices para enumerar estados (integridad a nivel de aplicacion).
@@ -72,11 +72,6 @@ class Hotel(TimeStampedModel):
 # 2. TIPO DE HABITACION
 # ============================================================
 class TipoHabitacion(TimeStampedModel):
-    """
-    Catalogo de tipos: Single, Doble, Suite, etc.
-    Las amenidades se guardan como JSON para flexibilidad
-    (ej. {"wifi": true, "minibar": true, "tv_cable": false}).
-    """
 
     hotel = models.ForeignKey(
         Hotel,
@@ -127,10 +122,6 @@ class TipoHabitacion(TimeStampedModel):
 # 3. HABITACION
 # ============================================================
 class Habitacion(TimeStampedModel):
-    """
-    Habitacion fisica del hotel con su estado actual.
-    Los 4 estados son los que la guia exige para el "Plano del Hotel".
-    """
 
     class Estado(models.TextChoices):
         DISPONIBLE = "DISPONIBLE", "Disponible"
@@ -184,10 +175,6 @@ class Habitacion(TimeStampedModel):
 # 4. HUESPED
 # ============================================================
 class Huesped(TimeStampedModel):
-    """
-    Cliente del hotel. Se identifica por documento (DNI / CE / Pasaporte)
-    para soportar huespedes nacionales y extranjeros.
-    """
 
     class TipoDoc(models.TextChoices):
         DNI = "DNI", "DNI"
@@ -228,24 +215,9 @@ class Huesped(TimeStampedModel):
 
 
 # ============================================================
-# 5. TARIFA (precios dinamicos por temporada)
+# 5. TARIFA 
 # ============================================================
 class Tarifa(TimeStampedModel):
-    """
-    Tarifa vigente para un TipoHabitacion en un rango de fechas.
-
-    El servicio TarifaService (HITO 3) buscara la tarifa aplicable DIA POR DIA,
-    permitiendo que una reserva atraviese multiples temporadas.
-
-    Ejemplo:
-        Tarifa "Fin de ano":     2026-12-26 -> 2026-12-31  S/ 250
-        Tarifa "Ano nuevo":      2027-01-01 -> 2027-01-05  S/ 320
-
-        Reserva del 30-dic al 3-ene:
-            - 30, 31 dic -> S/ 250 x 2 = 500
-            - 1, 2 ene   -> S/ 320 x 2 = 640
-            TOTAL = S/ 1140
-    """
 
     tipo_habitacion = models.ForeignKey(
         TipoHabitacion,
@@ -292,7 +264,7 @@ class Tarifa(TimeStampedModel):
 
 
 # ============================================================
-# 6. RESERVA  *** NUCLEO DEL SISTEMA ***
+# 6. RESERVA  - NUCLEO DEL SISTEMA -
 # ============================================================
 class Reserva(TimeStampedModel):
     """
@@ -402,21 +374,7 @@ class Reserva(TimeStampedModel):
     # VALIDACION MATEMATICA DE SOLAPAMIENTO
     # ------------------------------------------------------
     def clean(self):
-        """
-        Valida la regla mas critica: no permitir reservas solapadas
-        en la misma habitacion.
 
-        FORMULA FORMAL (intervalos semi-abiertos [in, out)):
-            existe_solapamiento  <=>  e1 < s2  AND  e2 < s1
-
-        DEMOSTRACION:
-            Sea R1 = [e1, s1) y R2 = [e2, s2).
-            Si e1 >= s2  ->  R1 empieza despues de que R2 termina  -> NO solape
-            Si e2 >= s1  ->  R2 empieza despues de que R1 termina  -> NO solape
-            La conjuncion de las negaciones es la condicion de solape.
-
-        EXCLUYE reservas en estado CANCELADA o NO_SHOW (liberan la habitacion).
-        """
         super().clean()
 
         # 1. Validacion temporal basica
@@ -682,7 +640,7 @@ class Folio(TimeStampedModel):
         return f"Folio #{self.pk} - Total S/ {self.total} ({self.get_estado_display()})"
     
 # ============================================================
-# 10. INCIDENTE (HU11 - Reportar desperfectos / consumos)
+# 10. INCIDENTE 
 # ============================================================
 class Incidente(TimeStampedModel):
     """
@@ -740,7 +698,7 @@ class Incidente(TimeStampedModel):
 
 
 # ============================================================
-# 11. LOG DE AUDITORIA (HU15 - Bitacora)
+# 11. LOG DE AUDITORIA 
 # ============================================================
 class LogAuditoria(TimeStampedModel):
     """

@@ -38,6 +38,11 @@ export async function cancelarReserva(
   return response.data;
 }
 
+export async function confirmarReserva(id: number) {
+  const { data } = await apiClient.post(`/reservas/${id}/confirmar/`);
+  return data;
+}
+
 export async function hacerCheckin(id: number): Promise<Estancia> {
   const response = await apiClient.post<Estancia>(`/reservas/${id}/checkin/`);
   return response.data;
