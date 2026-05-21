@@ -95,8 +95,8 @@ def crear_reserva(
         fecha_salida=fecha_salida,
     )
 
-    # 2. Crear la reserva (el modelo valida solapamiento via clean())
-    reserva = Reserva.objects.create(
+# 2. Crear la reserva (el modelo valida solapamiento via clean())
+    reserva = Reserva(
         hotel=hotel,
         huesped=huesped,
         habitacion=habitacion,
@@ -110,6 +110,8 @@ def crear_reserva(
         estado=Reserva.Estado.CONFIRMADA,
         creada_por=creada_por,
     )
+    reserva.full_clean()   # ACTIVA validacion del modelo: overlap + capacidad + fechas
+    reserva.save()
 
     return reserva
 
@@ -524,25 +526,23 @@ def crear_reserva_publica(
     )
 
     # =========================================================
-    # 4. Crear reserva
+    # 4. Crear reserva 
     # =========================================================
-    reserva = Reserva.objects.create(
+    reserva = Reserva(
         hotel=habitacion.hotel,
         huesped=huesped,
         habitacion=habitacion,
-
         fecha_entrada=check_in,
         fecha_salida=check_out,
-
         num_adultos=adultos,
         num_ninos=ninos,
-
-        # 🔥 FIX REAL
         precio_total=calculo["total"],
-
         estado=Reserva.Estado.PENDIENTE,
         origen="WEB",
     )
+    reserva.full_clean()   # Doble seguridad: valida overlap + capacidad + fechas
+    reserva.save()
+
 
     # =========================================================
     # 5. Auditoria
